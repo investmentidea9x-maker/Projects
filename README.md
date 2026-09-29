@@ -33,6 +33,10 @@ Game giả lập điều hành ngân hàng theo mô hình Việt Nam, chạy th�
 
 Bảng cân đối khởi đầu được dựng từ các tỷ lệ trên (dư nợ, tiền gửi, giấy tờ có giá, vay nước ngoài và vay dài hạn, tài sản khác) và tài sản có rủi ro được hiệu chỉnh để CAR khởi đầu đúng bằng CAR công bố. Logo là bản pixel 8×8 mô phỏng nhận diện từng ngân hàng, đã biến đổi.
 
+## Khởi đầu từ dữ liệu thật
+
+Trò chơi bắt đầu tháng 10/2025 trên nền 45 tháng lịch sử vĩ mô Việt Nam (1/2022–9/2025): CPI, GDP quý, lãi suất tái cấp vốn, lãi liên ngân hàng qua đêm, tỷ giá VND/USD, lãi huy động 12 tháng, lãi cho vay bình quân, tín dụng YoY, dự trữ ngoại hối, Fed funds, M2, chỉ số nhiệt bất động sản, nợ xấu, dư nợ toàn hệ thống. Trạng thái khởi đầu (tỷ giá 26.380, CPI 3,4%, GDP 8,2%, tái cấp vốn 4,5%, Fed 4,25%, tín dụng +19,8%, BĐS đang ấm lại, tăng trưởng tín dụng từ đầu năm 13%) lấy từ điểm dữ liệu cuối; 12 tháng đầu nối mượt từ số liệu thật sang mô phỏng. Biểu đồ dashboard hiển thị lịch sử thật (nền xám) nối liền phần mô phỏng. Số liệu là xấp xỉ tổng hợp từ nguồn công khai (NHNN, GSO, báo cáo ngân hàng), nằm trong bảng `HIST` ở đầu file để thay bằng dữ liệu riêng (ví dụ từ ViMo Tracker) nếu cần.
+
 ## Mô hình vĩ mô và chu kỳ
 
 - **Lãi suất là hệ quả, không phải tham số.** Lãi huy động thị trường = neo lãi suất điều hành + phụ trội thanh khoản (độ căng liên ngân hàng) + kỳ vọng lạm phát + mức độ thiếu nguồn của các ngân hàng. Lãi cho vay tham chiếu = chi phí vốn bình quân thực tế của hệ thống + chi phí hoạt động + phụ trội rủi ro (nợ xấu) + phụ trội thanh khoản + biên. Lãi huy động và cho vay "hệ thống" hiển thị là bình quân gia quyền lãi thực tế đang áp dụng của 9 ngân hàng.

@@ -233,6 +233,29 @@ const REG = {
   bigCustomerCap: 14,   // Luật TCTD 2024: giới hạn cấp tín dụng 1 khách hàng (% vốn tự có), giảm dần về 10%
 };
 
+/* ---------- Dữ liệu lịch sử vĩ mô Việt Nam 1/2022 – 9/2025 (xấp xỉ, tổng hợp từ NHNN, GSO, công bố ngân hàng; đủ để khởi đầu trò chơi) ----------
+   cpi: CPI YoY %; gdp: GDP quý YoY %; refi: lãi suất tái cấp vốn; ibON: liên ngân hàng qua đêm; usd: VND/USD liên ngân hàng cuối tháng;
+   dep12: lãi huy động 12 tháng bình quân; lend: lãi cho vay bình quân; cg: tín dụng YoY %; res: dự trữ ngoại hối tỷ USD; fed: Fed funds (trần);
+   m2: cung tiền YoY %; re: chỉ số nhiệt bất động sản (1 = bình thường); npl: nợ xấu nội bảng NH niêm yết %; credit: dư nợ toàn hệ thống (triệu tỷ) */
+const START = { y: 2025, mo: 9 }; // trò chơi bắt đầu tháng 10/2025, ngay sau điểm dữ liệu cuối
+const HIST = {
+  cpi:   [1.94,1.42,2.41,2.64,2.86,3.37,3.14,2.89,3.94,4.30,4.37,4.55, 4.89,4.31,3.35,2.81,2.43,2.00,2.06,2.96,3.66,3.59,3.45,3.58, 3.37,3.98,3.97,4.40,4.44,4.34,4.36,3.45,2.63,2.89,2.77,2.94, 3.63,2.91,3.13,3.12,3.24,3.57,3.19,3.24,3.38],
+  gdp:   [5.05,5.05,5.05,7.83,7.83,7.83,13.71,13.71,13.71,5.92,5.92,5.92, 3.41,3.41,3.41,4.25,4.25,4.25,5.47,5.47,5.47,6.72,6.72,6.72, 5.98,5.98,5.98,7.25,7.25,7.25,7.43,7.43,7.43,7.55,7.55,7.55, 7.05,7.05,7.05,8.19,8.19,8.19,8.23,8.23,8.23],
+  refi:  [4,4,4,4,4,4,4,4,5,6,6,6, 6,6,6,5.5,5,4.5,4.5,4.5,4.5,4.5,4.5,4.5, 4.5,4.5,4.5,4.5,4.5,4.5,4.5,4.5,4.5,4.5,4.5,4.5, 4.5,4.5,4.5,4.5,4.5,4.5,4.5,4.5,4.5],
+  ibON:  [0.7,0.8,2.0,1.6,1.0,0.5,1.5,3.5,4.5,6.0,5.5,4.5, 5.5,5.0,4.0,3.0,3.2,1.5,0.5,0.2,0.2,0.6,0.5,0.3, 0.2,1.5,2.5,4.5,4.6,4.5,4.6,4.4,3.0,3.3,4.5,4.3, 4.7,4.3,3.8,3.9,3.0,3.5,4.6,5.0,4.7],
+  usd:   [22690,22800,22850,22950,23200,23280,23400,23450,23800,24850,24800,23630, 23450,23700,23480,23450,23480,23550,23680,24050,24380,24560,24260,24270, 24500,24680,24800,25360,25450,25460,25300,24900,24600,25300,25400,25480, 25050,25550,25650,26000,25950,26150,26200,26400,26380],
+  dep12: [5.5,5.5,5.6,5.6,5.7,5.9,6.2,6.4,6.8,7.6,8.6,9.0, 8.6,8.4,7.8,7.2,7.0,6.5,6.2,5.9,5.5,5.3,5.1,5.0, 4.9,4.8,4.7,4.7,4.8,4.9,5.0,5.1,5.1,5.1,5.2,5.2, 5.1,5.0,4.9,4.9,4.9,4.9,4.9,4.9,4.9],
+  lend:  [8.2,8.2,8.3,8.4,8.5,8.7,9.0,9.3,9.8,10.5,11.2,11.5, 11.2,11.0,10.6,10.2,10.0,9.6,9.3,9.0,8.7,8.5,8.3,8.1, 7.9,7.7,7.5,7.4,7.4,7.5,7.6,7.6,7.6,7.6,7.7,7.7, 7.6,7.5,7.4,7.3,7.2,7.2,7.2,7.3,7.3],
+  cg:    [12.5,13.5,15.0,16.0,16.5,16.9,16.4,16.0,16.5,16.2,15.5,14.2, 11.0,10.0,9.9,9.5,9.3,9.4,9.0,9.3,10.2,10.8,11.5,13.7, 12.4,12.0,12.8,13.0,13.5,15.0,14.8,15.2,15.5,15.8,16.0,15.1, 16.5,16.8,17.5,18.0,18.5,19.3,19.5,19.7,19.8],
+  res:   [110,110,109,108,106,104,100,97,92,89,87,87, 88,89,90,91,92,93,93,92,91,90,91,93, 93,92,91,88,86,85,84,84,86,85,84,80, 80,80,80,79,79,80,80,80,80],
+  fed:   [0.25,0.25,0.5,0.5,1.0,1.75,2.5,2.5,3.25,3.25,4.0,4.5, 4.5,4.75,5.0,5.0,5.25,5.25,5.5,5.5,5.5,5.5,5.5,5.5, 5.5,5.5,5.5,5.5,5.5,5.5,5.5,5.5,5.0,5.0,4.75,4.5, 4.5,4.5,4.5,4.5,4.5,4.5,4.5,4.5,4.25],
+  m2:    [12.5,12.0,11.5,10.5,10.0,9.7,9.5,9.0,8.0,7.5,6.5,6.2, 5.5,5.0,5.5,6.0,6.5,7.0,7.5,8.5,9.5,10.5,11.5,12.5, 11.0,10.5,10.8,11.2,11.5,11.8,12.0,12.5,12.8,13.0,13.2,13.0, 13.5,13.8,14.0,14.2,14.5,14.8,15.0,15.2,15.4],
+  re:    [1.30,1.32,1.34,1.32,1.25,1.15,1.05,0.95,0.85,0.70,0.55,0.45, 0.42,0.40,0.42,0.45,0.48,0.52,0.55,0.58,0.62,0.65,0.68,0.72, 0.75,0.80,0.85,0.90,0.92,0.95,0.98,1.00,1.02,1.05,1.08,1.10, 1.12,1.14,1.16,1.18,1.20,1.22,1.24,1.26,1.28],
+  npl:   [1.5,1.5,1.5,1.6,1.6,1.6,1.7,1.7,1.8,1.8,1.9,1.9, 2.0,2.1,2.1,2.2,2.2,2.3,2.3,2.3,2.3,2.2,2.2,2.1, 2.2,2.2,2.2,2.3,2.3,2.3,2.3,2.3,2.2,2.2,2.2,2.1, 2.2,2.2,2.2,2.2,2.2,2.2,2.2,2.2,2.2],
+  credit:[10.6,10.7,10.8,10.9,11.0,11.2,11.3,11.4,11.5,11.6,11.7,11.9, 12.0,12.0,12.1,12.2,12.3,12.5,12.6,12.7,12.9,13.1,13.3,13.6, 13.7,13.7,13.8,14.0,14.2,14.5,14.7,14.9,15.1,15.3,15.4,15.6, 15.8,16.0,16.2,16.4,16.6,16.9,17.1,17.3,17.6],
+};
+const HIST_N = HIST.cpi.length; // 45 tháng
+
 /* ---------- Độ khó ----------
    ev: xác suất có sự kiện mỗi tháng; pd: hệ số nợ xấu; dep: hệ số rút tiền khi yếu; comp: cạnh tranh với ngân hàng khác;
    nim: chênh lệch lãi cho vay thị trường (âm = biên mỏng hơn); roe: ROE cổ đông đòi hỏi (JSB), SOB thấp hơn 3 điểm */
@@ -756,11 +779,13 @@ class World {
   constructor(mode, playerId, diff = 'real') {
     this.mode = mode; // 'bank' | 'sbv'
     this.diffKey = diff; this.diff = DIFF[diff] || DIFF.real;
-    this.month = 0; this.year = 2026; this.monthOfYear = 1;
-    this.macro = { gdp: 6.8, cpi: 3.6, fedRate: 4.0, fx: 1.5, usd: 26150, re: 0.9, rePrev: 0.9, reserves: 95, m2: 11, oil: 0 };
-    this.us = { t: Math.floor(Math.random() * 84), period: 84 }; // chu kỳ kinh tế Mỹ ~7 năm, quyết định lộ trình Fed
+    this.month = 0; this.year = START.y; this.monthOfYear = START.mo + 1;
+    const L = HIST_N - 1; const yoyFx = (HIST.usd[L] / HIST.usd[L - 12] - 1) * 100;
+    this.macro = { gdp: HIST.gdp[L], cpi: HIST.cpi[L], fedRate: HIST.fed[L], fx: +Math.min(4, yoyFx * 0.6).toFixed(2), usd: HIST.usd[L], re: HIST.re[L], rePrev: HIST.re[L - 1], reserves: HIST.res[L], m2: HIST.m2[L], oil: 0 };
+    this.us = { t: 38, period: 84 }; // chu kỳ Mỹ đang đi xuống: Fed vừa bắt đầu hạ lãi suất
     this.lastEv = {};
-    this.sbv = { refi: 4.5, disc: 3.0, omo: 4.0, depCap6m: 4.75, rrrShort: 3.0, rrrLong: 1.0, ldrMax: 85, mltMax: 30, carMin: 8, roomOn: true, sysRoom: 14, forbearance: false, omoNet: 0, fxSell: 0, fxSpot: 0, ops: [], bill: 3.5 };
+    this.sbv = { refi: 4.5, disc: 3.0, omo: 4.0, depCap6m: 4.75, rrrShort: 3.0, rrrLong: 1.0, ldrMax: 85, mltMax: 30, carMin: 8, roomOn: true, sysRoom: 16, forbearance: false, omoNet: 0, fxSell: 0, fxSpot: 0, ops: [], bill: 3.5 };
+    this.sbv.refi = HIST.refi[HIST_N - 1]; this.sbv.omo = this.sbv.refi - 0.5; this.sbv.disc = this.sbv.refi - 1.5; this.sbv.bill = this.sbv.refi - 1.0;
     this.market = {};
     this.shocks = []; this.log = []; this.eventQueue = [];
     this.forbearanceLeft = 0; this.lastPolicyMove = -12;
@@ -771,8 +796,17 @@ class World {
     this.assignRoom();
     this.updateMarket();
     for (const b of this.banks) { b.bondRate = this.market.gt12 + 1; this.initPolicy(b); }
-    this.sysLoansYearStart = this.sysLoans();
+    // Lịch sử thật 1/2022–9/2025 nạp vào biểu đồ; dư nợ thật quy đổi theo quy mô 9 ngân hàng trong game
+    const scale = this.sysLoans() / (HIST.credit[HIST_N - 1] * 1e6);
     this.hist = [];
+    for (let i = 0; i < HIST_N; i++) {
+      const cofH = HIST.dep12[i] - 1.2; const t = i - (HIST_N - 1);
+      this.hist.push({ m: t, hist: true, cpi: HIST.cpi[i], gdp: HIST.gdp[i], fx: i >= 12 ? (HIST.usd[i] / HIST.usd[i - 12] - 1) * 100 : 1.0, usd: HIST.usd[i], re: HIST.re[i], ibON: HIST.ibON[i], refi: HIST.refi[i],
+        depSys: HIST.dep12[i] - 1.3, lendSys: HIST.lend[i] + 1.6 /* quy về bình quân danh mục, gồm bán lẻ và tiêu dùng */, cof: cofH, fed: HIST.fed[i], loans: HIST.credit[i] * 1e6 * scale, npl: HIST.npl[i], cg: HIST.cg[i], reserves: HIST.res[i], m2: HIST.m2[i], minCar: 9, maxNpl: HIST.npl[i] * 2, phase: HIST.refi[i] >= 6 ? 'tight' : HIST.re[i] < 0.7 ? 'bust' : HIST.cpi[i] > 4.3 ? 'hot' : 'expand' });
+    }
+    // Tín dụng đầu năm 2025 theo tăng trưởng YTD thật đến tháng 9 (~13%)
+    const ytd = 0.13; this.sysLoansYearStart = this.sysLoans() / (1 + ytd); for (const b of this.banks) b.loansAtYearStart = b.grossLoans() / (1 + ytd);
+    this.sysCreditGrowthAnn = HIST.cg[HIST_N - 1];
     this.ibFrozen = false;
     this.pendingEvent = null;
   }
@@ -784,7 +818,7 @@ class World {
   shockMul(k) { return this.shocks.reduce((a, s) => a * (s[k] ?? 1), 1); }
   addShock(s) { this.shocks.push(s); }
   addLog(msg, cls) { this.log.unshift({ m: this.month, msg, cls }); if (this.log.length > 300) this.log.pop(); }
-  dateStr(m = this.month) { const y = 2026 + Math.floor(m / 12); return `${MONTHS[m % 12]}/${y}`; }
+  dateStr(m = this.month) { const idx = START.mo + m; const y = START.y + Math.floor(idx / 12); return `${MONTHS[((idx % 12) + 12) % 12]}/${y}`; }
 
   compRates(b) { // lãi suất tốt nhất mà đối thủ đang chào
     const o = this.banks.filter(x => x !== b && !x.dead); if (!o.length) return { rLt6: 0, rM6_12: 0, rGt12: 0, lendShort: 99 };
@@ -967,10 +1001,11 @@ class World {
     if (!cands.length) return null; const e = cands[Math.floor(Math.random() * cands.length)]; this.lastEv[e.id] = this.month; return e;
   }
   step() {
-    this.month++; this.monthOfYear = (this.month % 12) + 1; this.year = 2026 + Math.floor(this.month / 12);
+    this.month++; const idx = START.mo + this.month; this.monthOfYear = (idx % 12) + 1; this.year = START.y + Math.floor(idx / 12);
     // tín dụng tăng trưởng năm (annualized) để đưa vào vĩ mô
     const prev = this.hist.length >= 12 ? this.hist[this.hist.length - 12].loans : this.sysLoansYearStart;
-    this.sysCreditGrowthAnn = this.hist.length >= 12 ? (prev > 0 ? (this.sysLoans() / prev - 1) * 100 : 14) : (this.month <= 1 ? 12 : (this.sysLoans() / prev - 1) * 100 * 12 / Math.max(1, this.month - 1)); // năm đầu: quy năm từ đầu kỳ
+    const cgRaw = this.hist.length >= 12 ? (prev > 0 ? (this.sysLoans() / prev - 1) * 100 : 14) : (this.month <= 1 ? 12 : (this.sysLoans() / prev - 1) * 100 * 12 / Math.max(1, this.month - 1));
+    this.sysCreditGrowthAnn = this.month <= 12 ? (this.sysCreditGrowthAnn ?? cgRaw) * 0.8 + cgRaw * 0.2 : cgRaw; // 12 tháng đầu: nối mượt từ số liệu thật sang mô phỏng
     if (this.mode === 'bank') this.sbvAuto(); else this.processOps();
     this.macroStep();
     this.updateMarket();
@@ -987,16 +1022,16 @@ class World {
     // kiểm soát đặc biệt các ngân hàng chết (AI)
     for (const b of this.banks) if (b.dead && !b.announced) { b.announced = true; this.addLog(`${b.name} bị đưa vào diện kiểm soát đặc biệt (${b.deadReason}).`, 'bad'); this.addShock({ name: 'Bất ổn hệ thống', left: 3, dep: 1.5, ib: 1 }); }
     // cuối năm
-    if (this.month % 12 === 0) {
+    if (this.monthOfYear === 12) {
       for (const b of this.banks) if (!b.dead) b.yearEnd(this);
       this.sysLoansYearStart = this.sysLoans();
       if (this.mode === 'bank') { this.sbv.sysRoom = clamp(15 + (this.macro.cpi < 4 ? 1 : -2) + (this.macro.gdp < 6 ? 1 : 0), 8, 20); }
       this.assignRoom();
-      this.addLog(`Năm ${this.year - 1} kết thúc. Room tín dụng năm ${this.year}: hệ thống ${this.sbv.sysRoom}%.`, 'good');
+      this.addLog(`Năm ${this.year} kết thúc. Room tín dụng năm ${this.year + 1}: hệ thống ${this.sbv.sysRoom}%.`, 'good');
     }
     const alive2 = this.banks.filter(b => !b.dead);
     this.hist.push({ m: this.month, minCar: alive2.length ? Math.min(...alive2.map(b => b.car())) : 0, maxNpl: alive2.length ? Math.max(...alive2.map(b => b.nplRatio() * 100)) : 0, cpi: this.macro.cpi, gdp: this.macro.gdp, fx: this.macro.fx, usd: this.macro.usd, re: this.macro.re, ibON: this.market.ibON, refi: this.sbv.refi, depSys: this.market.depSys, lendSys: this.market.lendSys, cof: this.market.cof, fed: this.macro.fedRate, phase: this.cyclePhase().key, loans: this.sysLoans(), npl: this.sysNpl() * 100, cg: this.sysCreditGrowthAnn, reserves: this.macro.reserves, m2: this.macro.m2 });
-    if (this.hist.length > 240) this.hist.shift();
+    if (this.hist.length > 300) this.hist.shift();
   }
   sbvScore() {
     const M = this.macro; let s = 0;
@@ -1287,7 +1322,7 @@ function renderStart() {
   app.innerHTML = `
   <div class="start">
     <h1>BankSim Việt Nam</h1>
-    <p class="lead">Mô phỏng thời gian thực điều hành ngân hàng theo khung pháp lý Việt Nam: CAR (TT41), LDR 85% (TT22), vốn ngắn hạn cho vay trung dài hạn 30%, dự trữ bắt buộc, trần lãi suất huy động, room tín dụng, phân loại nợ 5 nhóm và trích lập dự phòng (TT11). Mỗi tháng trôi qua trong vài giây; bạn chỉnh lãi suất, cơ cấu và nguồn vốn trong khi khách ra vào trụ sở. Số liệu tính bằng tỷ đồng, mô phỏng để học, không phải số liệu thật.</p>
+    <p class="lead">Khởi đầu từ tháng 10/2025 trên nền dữ liệu lịch sử thật của kinh tế Việt Nam 1/2022–9/2025 (CPI, GDP, tỷ giá, lãi suất điều hành, liên ngân hàng, huy động, cho vay, tín dụng, dự trữ, Fed, nhiệt bất động sản; số liệu xấp xỉ tổng hợp công khai). Mô phỏng thời gian thực điều hành ngân hàng theo khung pháp lý Việt Nam: CAR (TT41), LDR 85% (TT22), vốn ngắn hạn cho vay trung dài hạn 30%, dự trữ bắt buộc, trần lãi suất huy động, room tín dụng, phân loại nợ 5 nhóm và trích lập dự phòng (TT11). Mỗi tháng trôi qua trong vài giây; bạn chỉnh lãi suất, cơ cấu và nguồn vốn trong khi khách ra vào trụ sở. Số liệu tính bằng tỷ đồng, mô phỏng để học, không phải số liệu thật.</p>
     <div class="panel" style="margin-top:16px"><h2>Độ khó</h2><div class="diffs">${Object.entries(DIFF).map(([k, d]) => `<label class="diff"><input type="radio" name="diff" value="${k}" ${k === 'real' ? 'checked' : ''}> <b>${d.name}</b><span class="small muted"> · ${d.desc}</span></label>`).join('')}</div></div>
     <h2 style="margin-top:20px">Chọn vai trò: điều hành một trong 9 ngân hàng (4 SOB, 5 JSB) hoặc làm NHNN</h2>
     <div class="cards">
@@ -1512,6 +1547,7 @@ function macroTable() {
     <tr><td>Tỷ giá USD/VND · xu hướng/năm · Fed funds (mục tiêu chu kỳ Mỹ)</td><td class="r">${fmt0(M.usd)} · ${M.fx >= 0 ? '+' : ''}${pp(M.fx, 1)} · ${pp(M.fedRate)} (${pp(W.us.target ?? M.fedRate)})</td></tr>
     <tr><td>Chỉ số nhiệt BĐS (1 = bình thường)</td><td class="r">${fmt1(M.re * 100)}</td></tr>
     <tr><td>Tín dụng hệ thống YoY / room hệ thống</td><td class="r">${pp(W.sysCreditGrowthAnn ?? 14, 1)} / ${S.roomOn ? S.sysRoom + '%' : 'đã bỏ room'}</td></tr>
+    <tr><td>Nền dữ liệu</td><td class="r">lịch sử thật 1/2022–9/2025, mô phỏng từ T10/2025</td></tr>
     <tr><td>Cú sốc đang tác động</td><td class="r">${W.shocks.length ? W.shocks.map(s => `${s.name} (${s.left}th)`).join(', ') : 'không'}</td></tr>
     <tr><td>Thông tư 02 (cơ cấu nợ)</td><td class="r">${S.forbearance ? 'đang áp dụng' : 'không'}</td></tr>
   </table>`;
@@ -2039,6 +2075,7 @@ function dashSeries(B) {
   const S = W.sbv;
   if (W.mode === 'bank') {
     const h = B.hist.slice(-dashRange); const m0 = h.length ? h[0].m : 0; const dep = x => x.dep.casa + x.dep.lt6 + x.dep.m6_12 + x.dep.gt12;
+    const hw = W.hist.slice(-dashRange); const m0w = hw.length ? hw[0].m : 0;
     return { m0, h, charts: [
       { id: 'd1', title: 'Quy mô (tỷ VND)', series: [{ name: 'Tổng tài sản', color: '--s1', data: h.map(x => x.TA) }, { name: 'Tiền gửi', color: '--s3', data: h.map(dep) }, { name: 'Dư nợ', color: '--s2', data: h.map(x => x.loans) }] },
       { id: 'd2', title: 'Lợi nhuận tháng (tỷ VND)', series: [{ name: 'Thu nhập lãi thuần', color: '--s3', data: h.map(x => x.nii ?? 0) }, { name: 'Lợi nhuận sau thuế', color: '--s1', data: h.map(x => x.net) }, { name: 'Dự phòng', color: '--s2', data: h.map(x => x.provExp ?? 0) }] },
@@ -2049,10 +2086,10 @@ function dashSeries(B) {
       { id: 'd7', title: 'Vốn ngắn hạn cho vay TDH (%)', series: [{ name: 'Tỷ lệ', color: '--s4', data: h.map(x => x.mlt) }], lines: [S.mltMax], note: `trần ${S.mltMax}%` },
       { id: 'd8', title: 'Dự trữ thanh khoản (%)', series: [{ name: 'Tỷ lệ', color: '--s6', data: h.map(x => x.liq) }], lines: [10], note: 'tối thiểu 10%' },
       { id: 'd9', title: 'Tín dụng so với room (%)', series: [{ name: 'Tăng trưởng YTD', color: '--s1', data: h.map(x => x.growth) }, { name: 'Room NHNN', color: '--s2', data: h.map(x => x.room ?? B.room) }] },
-      { id: 'd10', title: 'Lãi suất (%)', series: [{ name: 'LS cho vay bình quân', color: '--s2', data: h.map(x => x.lendAvg ?? 0) }, { name: 'Chi phí vốn', color: '--s3', data: h.map(x => x.cof) }, { name: 'Liên NH O/N', color: '--s4', data: h.map(x => x.ibON ?? 0) }, { name: 'Tái cấp vốn', color: '--s1', data: h.map(x => x.refi ?? 0) }] },
-      { id: 'd11', title: 'Vĩ mô (%)', series: [{ name: 'CPI', color: '--s1', data: h.map(x => x.cpi ?? 0) }, { name: 'GDP', color: '--s3', data: h.map(x => x.gdp ?? 0) }] },
-      { id: 'd13', title: 'Tỷ giá USD/VND', series: [{ name: 'USD/VND', color: '--s2', data: h.map(x => x.usd ?? 0) }], zero: false },
-      { id: 'd14', title: 'Lãi suất hệ thống (%)', series: [{ name: 'Huy động hệ thống', color: '--s3', data: h.map(x => x.depSys ?? 0) }, { name: 'Cho vay hệ thống', color: '--s2', data: h.map(x => x.lendSys ?? 0) }, { name: 'Chi phí vốn hệ thống', color: '--s1', data: h.map(x => x.sysCof ?? 0) }] },
+      { id: 'd10', title: 'Lãi suất của ngân hàng (%)', series: [{ name: 'LS cho vay bình quân', color: '--s2', data: h.map(x => x.lendAvg ?? 0) }, { name: 'Chi phí vốn', color: '--s3', data: h.map(x => x.cof) }] },
+      { id: 'd11', title: 'Vĩ mô (%) · lịch sử thật từ 2022', m0: m0w, series: [{ name: 'CPI', color: '--s1', data: hw.map(x => x.cpi ?? 0) }, { name: 'GDP', color: '--s3', data: hw.map(x => x.gdp ?? 0) }, { name: 'Tín dụng YoY', color: '--s2', data: hw.map(x => x.cg ?? 0) }] },
+      { id: 'd13', title: 'Tỷ giá USD/VND · lịch sử thật', m0: m0w, series: [{ name: 'USD/VND', color: '--s2', data: hw.map(x => x.usd ?? 0) }], zero: false },
+      { id: 'd14', title: 'Lãi suất hệ thống (%) · lịch sử thật', m0: m0w, series: [{ name: 'Huy động hệ thống', color: '--s3', data: hw.map(x => x.depSys ?? 0) }, { name: 'Cho vay hệ thống', color: '--s2', data: hw.map(x => x.lendSys ?? 0) }, { name: 'Liên NH O/N', color: '--s4', data: hw.map(x => x.ibON ?? 0) }, { name: 'Tái cấp vốn', color: '--s1', data: hw.map(x => x.refi ?? 0) }, { name: 'Fed', color: '--s6', data: hw.map(x => x.fed ?? 0) }] },
       { id: 'd12', title: 'Cơ cấu nguồn vốn (tỷ VND)', stack: true, series: [{ name: 'CASA', color: '--s1', data: h.map(x => x.dep.casa) }, { name: 'TG <12 tháng', color: '--s2', data: h.map(x => x.dep.lt6 + x.dep.m6_12) }, { name: 'TG ≥12 tháng', color: '--s3', data: h.map(x => x.dep.gt12) }, { name: 'GTCG', color: '--s4', data: h.map(x => x.bonds) }, { name: 'Liên NH + NHNN', color: '--s5', data: h.map(x => x.ib) }, { name: 'Vốn CSH', color: '--s6', data: h.map(x => x.eq) }] },
     ] };
   }
@@ -2071,7 +2108,7 @@ function dashSeries(B) {
 }
 function dashPane(B) {
   const d = dashSeries(B);
-  const rng = [12, 36, 240].map(r => `<button class="btn small ${dashRange === r ? 'primary' : ''}" data-range="${r}">${r === 240 ? 'Tất cả' : r + ' tháng'}</button>`).join(' ');
+  const rng = [12, 36, 300].map(r => `<button class="btn small ${dashRange === r ? 'primary' : ''}" data-range="${r}">${r === 300 ? 'Tất cả (từ 2022)' : r + ' tháng'}</button>`).join(' ');
   const latest = (W.reports || []).slice(-1)[0];
   return `<div class="grid" style="margin-bottom:12px"><div class="panel"><h2>Báo cáo tháng ${W.dateStr()}</h2>${latest ? `<ul class="replist">${latest.lines.map(l => `<li>${l}</li>`).join('')}</ul>` : '<p class="muted">Chạy tháng đầu tiên để có báo cáo.</p>'}</div></div>
   <div class="actions" style="margin-bottom:8px"><span class="muted small">Khoảng thời gian:</span> ${rng}</div>
@@ -2079,7 +2116,7 @@ function dashPane(B) {
 }
 function drawDash(B) {
   const d = dashSeries(B); if (!d.h.length) return;
-  for (const c of d.charts) { if (c.stack) stackChart(c.id, c.series, d.m0); else lineChart(c.id, c.series, { m0: d.m0, lines: c.lines, zero: c.zero }); }
+  for (const c of d.charts) { const m0 = c.m0 ?? d.m0; if (c.stack) stackChart(c.id, c.series, m0); else lineChart(c.id, c.series, { m0, lines: c.lines, zero: c.zero }); }
   document.querySelectorAll('[data-range]').forEach(b => b.onclick = () => { dashRange = +b.dataset.range; renderPane(); });
 }
 
@@ -2096,9 +2133,10 @@ function lineChart(id, series, opts = {}) {
   const x = i => pad.l + (Wd - pad.l - pad.r) * i / (n - 1), y = v => pad.t + (Ht - pad.t - pad.b) * (1 - (v - lo) / (hi - lo));
   g.strokeStyle = cssVar('--line'); g.lineWidth = 1; g.fillStyle = cssVar('--muted'); g.font = '11px ' + cssVar('--mono'); g.textAlign = 'right';
   const ticks = 4; for (let i = 0; i <= ticks; i++) { const v = lo + (hi - lo) * i / ticks; g.beginPath(); g.moveTo(pad.l, y(v)); g.lineTo(Wd - pad.r, y(v)); g.stroke(); g.fillText(fmtAx(v), pad.l - 6, y(v) + 4); }
-  g.textAlign = 'center'; const m0 = opts.m0 || 0; const stepL = Math.max(1, Math.round(n / 8));
+  g.textAlign = 'center'; const m0 = opts.m0 || 0; const stepL = Math.max(1, Math.ceil(n / Math.max(2, Math.floor((Wd - pad.l - pad.r) / 64))));
   for (let i = 0; i < n; i += stepL) g.fillText(W.dateStr(m0 + i), x(i), Ht - 6);
   (opts.lines || []).forEach(v => { g.setLineDash([4, 4]); g.strokeStyle = cssVar('--bad'); g.beginPath(); g.moveTo(pad.l, y(v)); g.lineTo(Wd - pad.r, y(v)); g.stroke(); g.setLineDash([]); });
+  if (m0 < 0 && -m0 < n) { const xb = x(-m0); g.fillStyle = cssVar('--line'); g.globalAlpha = 0.35; g.fillRect(pad.l, pad.t, xb - pad.l, Ht - pad.t - pad.b); g.globalAlpha = 1; g.setLineDash([3, 3]); g.strokeStyle = cssVar('--muted'); g.beginPath(); g.moveTo(xb, pad.t); g.lineTo(xb, Ht - pad.b); g.stroke(); g.setLineDash([]); g.fillStyle = cssVar('--muted'); g.font = '10px ' + cssVar('--font'); g.textAlign = 'left'; g.fillText('lịch sử thật ◂ ▸ mô phỏng', Math.min(xb + 4, Wd - 150), pad.t + 10); }
   series.forEach(s => { g.strokeStyle = cssVar(s.color); g.lineWidth = 2; g.beginPath(); s.data.forEach((v, i) => i ? g.lineTo(x(i), y(v)) : g.moveTo(x(i), y(v))); g.stroke();
     const last = s.data[s.data.length - 1]; g.fillStyle = cssVar(s.color); g.beginPath(); g.arc(x(s.data.length - 1), y(last), 3.5, 0, Math.PI * 2); g.fill(); });
   // hover: đường dọc + giá trị từng chuỗi
@@ -2130,7 +2168,7 @@ function stackChart(id, layers, m0) {
   g.fillStyle = cssVar('--muted'); g.font = '11px ' + cssVar('--mono'); g.textAlign = 'right'; g.strokeStyle = cssVar('--line');
   for (let i = 0; i <= 4; i++) { const v = hi * i / 4; g.beginPath(); g.moveTo(pad.l, y(v)); g.lineTo(Wd - pad.r, y(v)); g.stroke(); g.fillText(v >= 1e6 ? (v / 1e6).toFixed(1) + 'tr' : v >= 1000 ? Math.round(v / 1000) + 'k' : Math.round(v), pad.l - 6, y(v) + 4); }
   for (let i = 0; i < n; i++) { let acc = 0; layers.forEach(l => { const v = l.data[i]; g.fillStyle = cssVar(l.color); const y1 = y(acc + v), y0 = y(acc); g.fillRect(pad.l + i * bw + 1, y1, Math.max(1, bw - 2), Math.max(0, y0 - y1 - (v > 0 ? 1 : 0))); acc += v; }); }
-  g.textAlign = 'center'; const stepL = Math.max(1, Math.round(n / 8)); for (let i = 0; i < n; i += stepL) g.fillText(W.dateStr(m0 + i), pad.l + i * bw + bw / 2, Ht - 6);
+  g.textAlign = 'center'; const stepL = Math.max(1, Math.ceil(n / Math.max(2, Math.floor((Wd - pad.l - pad.r) / 64)))); for (let i = 0; i < n; i += stepL) g.fillText(W.dateStr(m0 + i), pad.l + i * bw + bw / 2, Ht - 6);
 }
 function drawCharts(B) {
   if (tab === 'dash') { drawDash(B); return; }
