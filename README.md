@@ -7,6 +7,7 @@ Game giả lập điều hành ngân hàng theo mô hình Việt Nam, chạy th�
 - Chọn **độ khó**: Dễ, Thực tế (mặc định) hoặc Khắc nghiệt. Độ khó quyết định tần suất cú sốc, tốc độ nợ xấu, mức rút tiền khi ngân hàng yếu, cạnh tranh lãi suất với ngân hàng khác, biên lãi thị trường và ROE mà cổ đông đòi hỏi (ba năm dưới kỳ vọng là bị thay Tổng giám đốc).
 
 - Chọn một trong 9 ngân hàng (4 NHTM Nhà nước, 5 NHTM cổ phần) để làm Tổng giám đốc, hoặc chọn vai Thống đốc NHNN để điều tiết cả hệ thống.
+- Giao diện thanh bên: điều hướng, đồng hồ, nút chạy, KPI nhanh ở cột trái; khung pixel, bảng nội dung và terminal ở giữa.
 - Bấm **Chạy**: mỗi tháng trôi qua trong vài giây (chỉnh tốc độ được). Phía trên là cảnh pixel trụ sở với khách gửi tiền (xanh lá), vay (xanh dương) và rút tiền (đỏ) ra vào; các bảng thông số an toàn, kết quả và thị trường vẽ ngay trên khung ở độ phân giải màn hình. Phía dưới là bảng điều hành và terminal nhật ký.
 - Tab **Điều hành** (ngân hàng): mọi tham số chỉnh bằng nút bấm theo bước (lãi suất ±0,25, khẩu vị ±1, tăng trưởng ±2, cơ cấu ngành ±5 điểm hoặc chọn mẫu, TPCP, đệm tiền mặt, số hóa, mạng lưới, cổ tức) và các hành động một lần (giấy tờ có giá 1/2/5% tài sản, trái phiếu cấp 2, tăng vốn 10/20/40%, bán nợ VAMC).
 - Tab **Công cụ NHNN**: nghiệp vụ thị trường mở bơm (mua kỳ hạn TPCP) hoặc hút (tín phiếu) với kỳ hạn 7/14/28/91 ngày, quy mô, tỷ lệ đảo hạn khi đến hạn và lãi suất từng đợt (mỗi đợt phát hành hỏi giữ, tăng hay giảm; lãi bơm là trần mềm, lãi tín phiếu là sàn mềm của lãi liên ngân hàng); bán USD giao ngay hoặc bán kỳ hạn 3–6 tháng với điểm kỳ hạn tự chọn (dự trữ chỉ giảm khi đáo hạn, ngân hàng được hủy một nửa nếu VND đã ổn định); họp điều hành hàng quý về lãi suất các công cụ; lãi suất điều hành, trần lãi suất, dự trữ bắt buộc, room, các trần an toàn, Thông tư 02 và xử lý ngân hàng yếu. Bảng "Nghiệp vụ đang mở" theo dõi số dư, kỳ hạn còn lại và đảo hạn.
@@ -31,6 +32,13 @@ Game giả lập điều hành ngân hàng theo mô hình Việt Nam, chạy th�
 | STB | JSB | 748 | 18% | 2,4% | 9,5% | 3,6% | 17% | 48% | Chi phí cao, đang tái cơ cấu |
 
 Bảng cân đối khởi đầu được dựng từ các tỷ lệ trên (dư nợ, tiền gửi, giấy tờ có giá, vay nước ngoài và vay dài hạn, tài sản khác) và tài sản có rủi ro được hiệu chỉnh để CAR khởi đầu đúng bằng CAR công bố. Logo là bản pixel 8×8 mô phỏng nhận diện từng ngân hàng, đã biến đổi.
+
+## Mô hình vĩ mô và chu kỳ
+
+- **Lãi suất là hệ quả, không phải tham số.** Lãi huy động thị trường = neo lãi suất điều hành + phụ trội thanh khoản (độ căng liên ngân hàng) + kỳ vọng lạm phát + mức độ thiếu nguồn của các ngân hàng. Lãi cho vay tham chiếu = chi phí vốn bình quân thực tế của hệ thống + chi phí hoạt động + phụ trội rủi ro (nợ xấu) + phụ trội thanh khoản + biên. Lãi huy động và cho vay "hệ thống" hiển thị là bình quân gia quyền lãi thực tế đang áp dụng của 9 ngân hàng.
+- **Tỷ giá** theo dõi ở dạng tuyệt đối (VND/USD) và xu hướng %/năm; xu hướng do chênh lệch lãi suất VND–USD, lạm phát và can thiệp của NHNN quyết định.
+- **Chu kỳ nội sinh.** Bất động sản có quán tính, nóng lên khi lãi suất thực thấp và tín dụng nhanh, đổ vỡ khi NHNN thắt chặt; lạm phát đi theo tín dụng, chênh lệch sản lượng và tỷ giá; Fed đi theo chu kỳ Mỹ ~7 năm từng bước 0,25. Pha chu kỳ (Mở rộng, Quá nóng, Thắt chặt, Suy giảm, Phục hồi) được suy ra từ trạng thái và hiển thị khắp nơi.
+- **Sự kiện phát sinh từ trạng thái.** Xác suất mỗi sự kiện tính từ chu kỳ: khủng hoảng trái phiếu chỉ xảy ra khi BĐS nóng và lãi suất tăng; rút tiền hàng loạt khi có ngân hàng yếu; USD rút khi chênh lệch lãi suất âm sâu; sốt vàng khi lạm phát hoặc tỷ giá cao; nới room giữa năm khi lạm phát thấp và tín dụng chậm; Thông tư 02 khi nợ xấu tăng và tăng trưởng yếu. Chỉ các cú sốc bên ngoài (chiến sự, thương mại, thiên tai, suy thoái toàn cầu) giữ xác suất nền nhỏ, nhân theo độ khó.
 
 ## Khung pháp lý được mô phỏng
 
