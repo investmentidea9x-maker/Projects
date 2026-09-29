@@ -14,6 +14,22 @@ Game giả lập điều hành ngân hàng theo mô hình Việt Nam, chạy th�
 - Tab **Tổng quan** có bảng "Cơ chế cho vay & dự trữ" giải thích từng bước của tháng: tiền gửi, dự trữ bắt buộc, thu nợ, cầu vay, trần cho vay và giới hạn nào đang chặn, giải ngân thực, cân đối liên ngân hàng.
 - Khi có sự kiện, khung pixel phía trên chạy hoạt ảnh riêng (tên lửa và trời đỏ khi có chiến sự, tàu container rời cảng khi bị áp thuế, máy bay chở USD bay đi, đám đông rút tiền, cần cẩu đổ khi khủng hoảng BĐS, xe thanh tra, nhà máy FDI, bão và sét, nhiễu màn hình khi bị tấn công mạng) cùng thẻ mô tả không chặn nhịp chơi; chỉ sự kiện cần bạn quyết định mới tạm dừng.
 
+## 9 ngân hàng (số liệu xấp xỉ cuối 2024, làm tròn để chơi)
+
+| Mã | Loại | Tổng TS (nghìn tỷ) | CASA | Nợ xấu | CAR | NIM | ROE | CIR | Đặc điểm |
+|---|---|---|---|---|---|---|---|---|---|
+| VCB | SOB | 2.085 | 35% | 1,0% | 11,4% | 2,9% | 18% | 34% | CASA cao, chi phí vốn thấp nhất, cho vay rẻ |
+| BIDV | SOB | 2.760 | 19% | 1,4% | 9,3% | 2,4% | 19% | 33% | Lớn nhất, CAR mỏng, phát hành nhiều GTCG |
+| CTG | SOB | 2.390 | 23% | 1,2% | 9,5% | 2,8% | 18% | 28% | Hiệu quả chi phí tốt, CAR mỏng |
+| AGRI | SOB | 2.200 | 13% | 1,7% | 9,8% | 3,0% | 14% | 40% | 58% dư nợ nông nghiệp nông thôn, mạng lưới lớn, một phần bị trần lãi ưu tiên |
+| TCB | JSB | 978 | 40% | 1,2% | 15,3% | 4,2% | 17% | 33% | 56% dư nợ BĐS và mua nhà, vốn dày, số hóa mạnh |
+| MB | JSB | 1.130 | 39% | 1,6% | 10,4% | 4,3% | 22% | 30% | CASA cao, đa dạng, tiêu dùng 16% |
+| VPB | JSB | 924 | 14% | 4,2% | 15,0% | 5,9% | 12% | 25% | Tiêu dùng 30%, khẩu vị cao, nợ xấu cao, biên lớn |
+| ACB | JSB | 864 | 23% | 1,5% | 12,0% | 3,6% | 22% | 33% | Bán lẻ, thận trọng, ROE cao |
+| STB | JSB | 748 | 18% | 2,4% | 9,5% | 3,6% | 17% | 48% | Chi phí cao, đang tái cơ cấu |
+
+Bảng cân đối khởi đầu được dựng từ các tỷ lệ trên (dư nợ, tiền gửi, giấy tờ có giá, vay nước ngoài và vay dài hạn, tài sản khác) và tài sản có rủi ro được hiệu chỉnh để CAR khởi đầu đúng bằng CAR công bố. Logo là bản pixel 8×8 mô phỏng nhận diện từng ngân hàng, đã biến đổi.
+
 ## Khung pháp lý được mô phỏng
 
 | Quy định | Ngưỡng | Văn bản |
