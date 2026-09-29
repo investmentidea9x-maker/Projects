@@ -744,7 +744,7 @@ class World {
     this.diffKey = diff; this.diff = DIFF[diff] || DIFF.real;
     this.month = 0; this.year = 2026; this.monthOfYear = 1;
     this.macro = { gdp: 6.8, cpi: 3.6, fedRate: 4.0, fx: 1.5, re: 0.9, reserves: 95, m2: 11 };
-    this.sbv = { refi: 4.5, disc: 3.0, omo: 4.0, depCap6m: 4.75, rrrShort: 3.0, rrrLong: 1.0, ldrMax: 85, mltMax: 30, carMin: 8, roomOn: true, sysRoom: 14, forbearance: false, omoNet: 0, fxSell: 0, fxSpot: 0, ops: [] };
+    this.sbv = { refi: 4.5, disc: 3.0, omo: 4.0, depCap6m: 4.75, rrrShort: 3.0, rrrLong: 1.0, ldrMax: 85, mltMax: 30, carMin: 8, roomOn: true, sysRoom: 14, forbearance: false, omoNet: 0, fxSell: 0, fxSpot: 0, ops: [], bill: 3.5 };
     this.market = {};
     this.shocks = []; this.log = []; this.eventQueue = [];
     this.forbearanceLeft = 0; this.lastPolicyMove = -12;
@@ -794,7 +794,14 @@ class World {
     let tight = (ldrSys - 0.82) * 15 + netBorrow / Math.max(1, sysDep) * 20 + this.shock('ib') - S.omoNet / Math.max(1, sysDep) * 100 + S.fxSell / Math.max(1, sysDep) * 60;
     tight = clamp(tight, -0.8, 4);
     this.tightness = tight;
-    const ibON = Math.max(0.3, S.omo + 0.4 * tight + rnd(-0.2, 0.2));
+    let ibON = Math.max(0.3, S.omo + 0.4 * tight + rnd(-0.2, 0.2));
+    if (this.mode === 'sbv') { // lãi suất đợt bơm là trần mềm, lãi suất tín phiếu là sàn mềm của liên ngân hàng
+      const inj = S.ops.filter(o => o.kind === 'inject'), abs = S.ops.filter(o => o.kind === 'absorb');
+      const wavg = a => a.length ? sum(a.map(o => o.amt * (o.rate ?? S.omo))) / Math.max(1, sum(a.map(o => o.amt))) : null;
+      const ri = wavg(inj), ra = wavg(abs);
+      if (ri != null && sum(inj.map(o => o.amt)) > 20000) ibON = Math.min(ibON, ri + 0.25);
+      if (ra != null && sum(abs.map(o => o.amt)) > 20000) ibON = Math.max(ibON, ra - 0.25);
+    }
     this.ibFrozen = tight > 3;
     const lt6 = Math.min(S.depCap6m, S.refi - 0.3 + 0.3 * tight);
     const m6_12 = S.refi + 0.6 + 0.35 * tight;
@@ -842,7 +849,7 @@ class World {
     const S = this.sbv, M = this.macro; S.fxSell = S.fxSpot || 0; S.fxSpot = 0;
     for (const op of S.ops) {
       if (op.kind === 'fwd') { M.fx -= op.amt * 0.08; op.left -= 1;
-        if (op.left <= 0) { const cancel = M.fx < 2 ? 0.5 : 0; const settle = op.amt * (1 - cancel); M.reserves -= settle; S.fxSell += settle * 25000; op.done = true;
+        if (op.left <= 0) { const cancel = M.fx < (op.prem ?? 0.5) * 2.5 ? 0.5 : 0; const settle = op.amt * (1 - cancel); M.reserves -= settle; S.fxSell += settle * 25000; op.done = true;
           this.addLog(`Forward ${fmt1(op.amt)} tỷ USD đáo hạn: giao ${fmt1(settle)} tỷ USD${cancel ? ', ngân hàng hủy một nửa vì VND đã ổn định' : ''}; dự trữ còn ${fmt1(M.reserves)} tỷ USD.`, 'warn');
           if (op.roll > 0 && op.amt * op.roll >= 0.5) S.ops.push({ id: Date.now() + Math.random(), kind: 'fwd', amt: op.amt * op.roll, tenor: op.tenor, left: op.tenor, roll: op.roll, start: this.month }); } }
       else { op.left -= 30; while (op.left <= 0 && op.amt >= 1) { op.amt *= op.roll; op.left += op.tenor; } if (op.amt < 1) { op.done = true; this.addLog(`${op.kind === 'inject' ? 'OMO bơm' : 'Tín phiếu'} kỳ hạn ${op.tenor} ngày đã tất toán hết.`, ''); } }
@@ -1109,7 +1116,7 @@ const Scene = {
       ], 'Vĩ mô');
       const inj = sum(S.ops.filter(o => o.kind === 'inject').map(o => o.amt)), abs = sum(S.ops.filter(o => o.kind === 'absorb').map(o => o.amt)), fwd = sum(S.ops.filter(o => o.kind === 'fwd').map(o => o.amt));
       box(cw - 218, 40, 210, [
-        ['LS liên NH O/N', pp(K.ibON), st(W.tightness < 1, W.tightness < 2.5)], ['TCV / OMO', `${pp(S.refi)} / ${pp(S.omo)}`], ['OMO bơm ròng', fmt0(inj - abs) + ' tỷ'], ['Forward USD chờ', fmt1(fwd) + ' tỷ USD'], ['NH bị KSĐB', String(W.banks.filter(b => b.dead).length), st(!W.banks.some(b => b.dead), true)], ['Điểm Thống đốc', String(W.sbvScore())],
+        ['LS liên NH O/N', pp(K.ibON), st(W.tightness < 1, W.tightness < 2.5)], ['TCV / OMO / TP', `${pp(S.refi, 1)}/${pp(S.omo, 1)}/${pp(S.bill, 1)}`], ['OMO bơm ròng', fmt0(inj - abs) + ' tỷ'], ['Forward USD chờ', fmt1(fwd) + ' tỷ USD'], ['NH bị KSĐB', String(W.banks.filter(b => b.dead).length), st(!W.banks.some(b => b.dead), true)], ['Điểm Thống đốc', String(W.sbvScore())],
       ], 'Điều hành');
       this.mktBar(`HĐ 12T <b>${pp(K.gt12)}</b> · cho vay <b>${pp(K.lend)}</b> · trần <6T <b>${pp(S.depCap6m)}</b> · DTBB <b>${pp(S.rrrShort, 1)}</b> · M2 <b>${pp(M.m2, 1)}</b> · Fed <b>${pp(M.fedRate)}</b> · độ căng TK <b>${fmt1(W.tightness)}</b> · TT02 <b>${S.forbearance ? 'có' : 'không'}</b>`);
     }
@@ -1548,12 +1555,22 @@ function bindManage(B) {
 /* ---------- Công cụ NHNN: chính sách bằng nút, nghiệp vụ OMO có kỳ hạn & đảo hạn, can thiệp tỷ giá ---------- */
 const sbvUI = { tenor: 7, roll: 1, amt: 50000, usd: 2, fwdM: 3, fwdRoll: 0 };
 const SBV = {
-  rate(d) { const S = W.sbv; S.refi = +clamp(S.refi + d, 1, 12).toFixed(2); S.omo = +clamp(S.omo + d, 0.5, 11).toFixed(2); S.disc = +clamp(S.disc + d, 0.5, 10).toFixed(2); W.addLog(`NHNN ${d > 0 ? 'tăng' : 'giảm'} lãi suất điều hành ${Math.abs(d).toFixed(2).replace('.', ',')} điểm: tái cấp vốn ${pp(S.refi)}, OMO ${pp(S.omo)}.`, d > 0 ? 'warn' : 'good'); },
+  rate(d) { const S = W.sbv; S.refi = +clamp(S.refi + d, 1, 12).toFixed(2); S.omo = +clamp(S.omo + d, 0.5, 11).toFixed(2); S.disc = +clamp(S.disc + d, 0.5, 10).toFixed(2); S.bill = +clamp(S.bill + d, 0.1, 15).toFixed(2); W.addLog(`NHNN ${d > 0 ? 'tăng' : 'giảm'} lãi suất điều hành ${Math.abs(d).toFixed(2).replace('.', ',')} điểm: tái cấp vốn ${pp(S.refi)}, OMO ${pp(S.omo)}.`, d > 0 ? 'warn' : 'good'); },
   set(k, d, lo, hi, name) { const S = W.sbv; S[k] = +clamp(S[k] + d, lo, hi).toFixed(2); W.addLog(`${name}: ${String(S[k]).replace('.', ',')}.`, ''); },
   toggle(k, name) { const S = W.sbv; S[k] = !S[k]; if (k === 'forbearance') W.forbearanceLeft = 0; W.addLog(`${name}: ${S[k] ? 'áp dụng' : 'bỏ'}.`, 'warn'); },
-  omo(kind, amt, tenor, roll) { const S = W.sbv; S.ops.push({ id: Date.now() + Math.random(), kind, amt, tenor, roll, left: tenor, start: W.month }); W.addLog(`${kind === 'inject' ? 'OMO bơm (mua kỳ hạn TPCP)' : 'Phát hành tín phiếu hút'} ${fmt0(amt)} tỷ, kỳ hạn ${tenor} ngày, đảo hạn ${Math.round(roll * 100)}%.`, kind === 'inject' ? 'good' : 'warn'); W.recomputeOmo(); },
+  omo(kind, amt, tenor, roll, rate) { const S = W.sbv; if (rate == null) rate = kind === 'inject' ? S.omo : S.bill; rate = +clamp(rate, 0.1, 15).toFixed(2); if (kind === 'inject') S.omo = rate; else S.bill = rate;
+    S.ops.push({ id: Date.now() + Math.random(), kind, amt, tenor, roll, rate, left: tenor, start: W.month }); W.addLog(`${kind === 'inject' ? 'OMO bơm (mua kỳ hạn TPCP)' : 'Phát hành tín phiếu hút'} ${fmt0(amt)} tỷ, kỳ hạn ${tenor} ngày, lãi suất ${pp(rate)}, đảo hạn ${Math.round(roll * 100)}%.`, kind === 'inject' ? 'good' : 'warn'); W.recomputeOmo(); },
+  askOmo(kind, amt, tenor, roll) { // mỗi đợt phát hành hỏi lãi suất
+    const S = W.sbv; const base = kind === 'inject' ? S.omo : S.bill; const name = kind === 'inject' ? 'OMO bơm' : 'tín phiếu';
+    const mk = d => ({ label: d === 0 ? `Giữ ${pp(base)}` : `${d > 0 ? 'Tăng' : 'Giảm'} lên ${pp(base + d)} (${d > 0 ? '+' : ''}${d.toFixed(2).replace('.', ',')})`, apply: () => { SBV.omo(kind, amt, tenor, roll, base + d); renderPane(); updateTop(); } });
+    showModal(`Đợt ${name} ${fmt0(amt)} tỷ, ${tenor} ngày, đảo hạn ${Math.round(roll * 100)}%`, `Lãi suất đợt này? ${kind === 'inject' ? 'Lãi bơm cao thì ngân hàng chỉ vay khi thật thiếu, thấp thì thị trường hạ nhiệt nhanh nhưng dễ dư tiền.' : 'Lãi tín phiếu cao hút mạnh, đẩy lãi liên ngân hàng lên (bảo vệ tỷ giá) nhưng tốn chi phí và siết tín dụng.'} Liên ngân hàng hiện ${pp(W.market.ibON)}, tái cấp vốn ${pp(S.refi)}.`, [mk(0), mk(0.25), mk(0.5), mk(-0.25), mk(-0.5)]);
+  },
   spot(usd) { const S = W.sbv, M = W.macro; if (M.reserves < usd) { toast('Dự trữ không đủ.'); return; } M.reserves -= usd; M.fx -= usd * 0.3; S.fxSpot = (S.fxSpot || 0) + usd * 25000; W.addLog(`Bán giao ngay ${usd} tỷ USD can thiệp: dự trữ còn ${fmt1(M.reserves)} tỷ USD, hút ${fmt0(usd * 25000)} tỷ VND.`, 'warn'); },
-  fwd(usd, months, roll) { const S = W.sbv, M = W.macro; S.ops.push({ id: Date.now() + Math.random(), kind: 'fwd', amt: usd, tenor: months, left: months, roll, start: W.month }); M.fx -= usd * 0.12; W.addLog(`Bán kỳ hạn ${usd} tỷ USD, ${months} tháng${roll ? ', tự gia hạn ' + Math.round(roll * 100) + '%' : ''}: hạ nhiệt tỷ giá ngay, dự trữ chỉ giảm khi đáo hạn (ngân hàng được hủy nếu VND ổn định).`, 'warn'); },
+  fwd(usd, months, roll, prem = 0.5) { const S = W.sbv, M = W.macro; S.ops.push({ id: Date.now() + Math.random(), kind: 'fwd', amt: usd, tenor: months, left: months, roll, prem, start: W.month }); M.fx -= usd * (0.16 - prem * 0.08); W.addLog(`Bán kỳ hạn ${usd} tỷ USD, ${months} tháng, tỷ giá kỳ hạn cao hơn giao ngay ${prem.toFixed(1).replace('.', ',')}%${roll ? ', tự gia hạn' : ''}: hạ nhiệt kỳ vọng ngay, dự trữ chỉ giảm khi đáo hạn (ngân hàng được hủy nếu VND đã ổn định).`, 'warn'); },
+  askFwd(usd, months, roll) {
+    const mk = prem => ({ label: prem === 0 ? 'Bằng giá giao ngay (hạ nhiệt mạnh, dễ bị hủy)' : `Cao hơn giao ngay ${prem.toFixed(1).replace('.', ',')}%${prem >= 1 ? ' (ít hấp dẫn, giữ dự trữ)' : ''}`, apply: () => { SBV.fwd(usd, months, roll, prem); renderPane(); updateTop(); } });
+    showModal(`Bán kỳ hạn ${usd} tỷ USD, ${months} tháng`, `Đặt tỷ giá kỳ hạn so với giao ngay. Điểm kỳ hạn thấp thì ngân hàng mua nhiều, tỷ giá hạ nhanh nhưng đến hạn dễ hủy nếu VND ổn định (không mất dự trữ). VND đang mất giá ${pp(W.macro.fx, 1)}/năm.`, [mk(0.5), mk(0), mk(1.0), mk(1.5)]);
+  },
   stopRoll(id) { const op = W.sbv.ops.find(o => o.id === id); if (op) { op.roll = 0; W.addLog('Dừng đảo hạn một nghiệp vụ; sẽ tất toán khi đáo hạn.', ''); } },
   weak(action, i) { const b = W.banks[i]; if (!b) return;
     if (action === 'refi') { const a = b.totalAssets() * 0.03; b.cash += a; b.refi += a; b.refiRate = 0; b.reputation = Math.min(0, b.reputation + 1); W.macro.cpi += 0.05; b.addLog(W.month, `NHNN tái cấp vốn đặc biệt ${fmt0(a)} tỷ.`, 'good'); W.addLog(`Tái cấp vốn đặc biệt ${fmt0(a)} tỷ cho ${b.name}.`, 'warn'); }
@@ -1565,13 +1582,14 @@ function sbvPane() {
   const S = W.sbv, M = W.macro, K = W.market; const u = sbvUI;
   const pol = (k, name, d, lo, hi, cur, hint) => arow(name, cur, [{ lbl: '−' + String(d).replace('.', ','), act: 'set', arg: [k, -d, lo, hi, name] }, { lbl: '+' + String(d).replace('.', ','), act: 'set', arg: [k, d, lo, hi, name] }], hint);
   const seg = (key, opts, fmtf) => `<div class="seg">${opts.map(o => `<button class="btn small ${u[key] === o ? 'primary' : ''}" data-ui="${key}" data-val="${o}">${fmtf(o)}</button>`).join('')}</div>`;
-  const opsRows = S.ops.length ? S.ops.map(o => `<tr><td>${o.kind === 'inject' ? 'OMO bơm' : o.kind === 'absorb' ? 'Tín phiếu hút' : 'Forward bán USD'}</td><td class="r">${o.kind === 'fwd' ? fmt1(o.amt) + ' tỷ USD' : fmt0(o.amt) + ' tỷ'}</td><td class="r">${o.kind === 'fwd' ? o.tenor + ' tháng' : o.tenor + ' ngày'}</td><td class="r">${o.kind === 'fwd' ? o.left + ' tháng' : Math.max(0, o.left) + ' ngày'}</td><td class="r">${Math.round(o.roll * 100)}%</td><td>${o.roll > 0 ? `<button class="btn small" data-act="stop" data-arg='${JSON.stringify(o.id)}'>Dừng đảo hạn</button>` : ''}</td></tr>`).join('') : '<tr><td colspan="6" class="muted">Chưa có nghiệp vụ nào đang mở.</td></tr>';
+  const opsRows = S.ops.length ? S.ops.map(o => `<tr><td>${o.kind === 'inject' ? 'OMO bơm' : o.kind === 'absorb' ? 'Tín phiếu hút' : 'Forward bán USD'}</td><td class="r">${o.kind === 'fwd' ? fmt1(o.amt) + ' tỷ USD' : fmt0(o.amt) + ' tỷ'}<br><span class="muted">${o.kind === 'fwd' ? 'điểm KH +' + (o.prem ?? 0.5).toFixed(1).replace('.', ',') + '%' : 'lãi ' + pp(o.rate ?? S.omo)}</span></td><td class="r">${o.kind === 'fwd' ? o.tenor + ' tháng' : o.tenor + ' ngày'}</td><td class="r">${o.kind === 'fwd' ? o.left + ' tháng' : Math.max(0, o.left) + ' ngày'}</td><td class="r">${Math.round(o.roll * 100)}%</td><td>${o.roll > 0 ? `<button class="btn small" data-act="stop" data-arg='${JSON.stringify(o.id)}'>Dừng đảo hạn</button>` : ''}</td></tr>`).join('') : '<tr><td colspan="6" class="muted">Chưa có nghiệp vụ nào đang mở.</td></tr>';
   return `<div class="grid g2">
     <div class="panel"><h2>Nghiệp vụ thị trường mở (OMO)</h2>
       <p class="small muted">Bơm = mua kỳ hạn TPCP (reverse repo), hút = phát hành tín phiếu. Đến hạn thì tiền quay về, trừ phần được đảo hạn. Kỳ hạn ngắn linh hoạt, kỳ hạn dài neo lãi suất lâu hơn. Đang bơm ròng <b>${fmt0(S.omoNet)}</b> tỷ · LS liên NH ${pp(K.ibON)} · độ căng ${fmt1(W.tightness)}.</p>
       <div class="arow"><div class="al"><span class="lbl">Kỳ hạn</span></div>${seg('tenor', [7, 14, 28, 91], o => o + ' ngày')}</div>
       <div class="arow"><div class="al"><span class="lbl">Tỷ lệ đảo hạn khi đến hạn</span></div>${seg('roll', [0, 0.5, 1], o => Math.round(o * 100) + '%')}</div>
       <div class="arow"><div class="al"><span class="lbl">Quy mô</span></div>${seg('amt', [20000, 50000, 100000, 200000], o => fmt0(o / 1000) + 'k tỷ')}</div>
+      <p class="small muted">Lãi suất đợt gần nhất: OMO bơm <b>${pp(S.omo)}</b> · tín phiếu <b>${pp(S.bill)}</b>. Mỗi đợt phát hành sẽ hỏi giữ, tăng hay giảm lãi suất; lãi bơm là trần mềm, lãi tín phiếu là sàn mềm của liên ngân hàng.</p>
       <div class="abtns wrap"><button class="btn primary" data-act="omo" data-arg='"inject"'>▲ Bơm ${fmt0(u.amt)} tỷ, ${u.tenor} ngày</button><button class="btn" data-act="omo" data-arg='"absorb"'>▼ Hút ${fmt0(u.amt)} tỷ, ${u.tenor} ngày</button></div>
     </div>
     <div class="panel"><h2>Can thiệp tỷ giá</h2>
@@ -1608,7 +1626,7 @@ function bindSbv() {
   pane.querySelectorAll('[data-act]').forEach(btn => btn.onclick = () => {
     const a = btn.dataset.act, arg = JSON.parse(btn.dataset.arg || 'null'); const u = sbvUI;
     if (a === 'rate') SBV.rate(arg); else if (a === 'set') SBV.set(...arg); else if (a === 'toggle') SBV.toggle(arg[0], arg[1]);
-    else if (a === 'omo') SBV.omo(arg, u.amt, u.tenor, u.roll); else if (a === 'spot') SBV.spot(u.usd); else if (a === 'fwd') SBV.fwd(u.usd, u.fwdM, u.fwdRoll); else if (a === 'stop') SBV.stopRoll(arg);
+    else if (a === 'omo') { SBV.askOmo(arg, u.amt, u.tenor, u.roll); return; } else if (a === 'spot') SBV.spot(u.usd); else if (a === 'fwd') { SBV.askFwd(u.usd, u.fwdM, u.fwdRoll); return; } else if (a === 'stop') SBV.stopRoll(arg);
     else if (a === 'weak') SBV.weak(arg, +$('#weakBank').value);
     renderPane(); updateTop();
   });
@@ -1683,18 +1701,26 @@ const DECISIONS = [
       { label: 'Bán TPCP lấy tiền mặt (đệm +3 điểm, TPCP −3%)', apply: (W, B) => { ACT.num(B, 'cashBuffer', 3, 0.5, 10, 'Đệm tiền mặt', '%'); ACT.num(B, 'gbondTarget', -3, 0, 30, 'TPCP', '%'); } },
       { label: 'Chờ qua cơn', apply: () => {} }] },
   /* ---- NHNN ---- */
+  { id: 's_rates', mode: 'sbv', cool: 3, cond: W => W.monthOfYear % 3 === 0, title: 'Họp điều hành hàng quý: lãi suất các công cụ',
+    text: W => `Tái cấp vốn ${pp(W.sbv.refi)}, OMO ${pp(W.sbv.omo)}, tín phiếu ${pp(W.sbv.bill)}, trần huy động <6 tháng ${pp(W.sbv.depCap6m)}. CPI ${pp(W.macro.cpi, 1)}, GDP ${pp(W.macro.gdp, 1)}, VND mất giá ${pp(W.macro.fx, 1)}, liên ngân hàng ${pp(W.market.ibON)}, tín dụng ${pp(W.sysCreditGrowthAnn, 1)}.`,
+    options: [
+      { label: 'Giữ nguyên bộ lãi suất', apply: () => {} },
+      { label: 'Tăng lãi suất điều hành 0,25 điểm (TCV, OMO, TCK)', apply: W => SBV.rate(0.25) },
+      { label: 'Tăng 0,5 điểm và nâng trần huy động 0,5', apply: W => { SBV.rate(0.5); SBV.set('depCap6m', 0.5, 3, 8, 'Trần lãi huy động <6 tháng'); } },
+      { label: 'Giảm lãi suất điều hành 0,25 điểm', apply: W => SBV.rate(-0.25) },
+      { label: 'Giảm 0,5 điểm và hạ trần huy động 0,5', apply: W => { SBV.rate(-0.5); SBV.set('depCap6m', -0.5, 3, 8, 'Trần lãi huy động <6 tháng'); } }] },
   { id: 's_cpi', mode: 'sbv', cool: 4, cond: W => W.macro.cpi > 4.5, title: 'Lạm phát vượt mục tiêu 4,5%',
     text: W => `CPI ${pp(W.macro.cpi, 1)}, tín dụng ${pp(W.sysCreditGrowthAnn, 1)}, lãi liên ngân hàng ${pp(W.market.ibON)}.`,
     options: [
       { label: 'Tăng lãi suất điều hành 0,5 điểm', apply: W => SBV.rate(0.5) },
-      { label: 'Hút 100 nghìn tỷ qua tín phiếu 28 ngày, đảo hạn 100%', apply: W => SBV.omo('absorb', 100000, 28, 1) },
+      { label: 'Hút 100 nghìn tỷ tín phiếu 28 ngày, lãi tín phiếu +0,5', apply: W => SBV.omo('absorb', 100000, 28, 1, W.sbv.bill + 0.5) },
       { label: 'Cắt room tín dụng hệ thống 2 điểm', apply: W => { W.sbv.sysRoom = Math.max(5, W.sbv.sysRoom - 2); for (const b of W.banks) b.room = Math.max(0, b.room - 2); W.addLog('Siết room tín dụng 2 điểm % để chống lạm phát.', 'warn'); } },
       { label: 'Chưa làm gì', apply: () => {} }] },
   { id: 's_slow', mode: 'sbv', cool: 4, cond: W => W.macro.gdp < 6 && W.macro.cpi < 3.5, title: 'Tăng trưởng yếu, lạm phát thấp',
     text: W => `GDP ${pp(W.macro.gdp, 1)}, CPI ${pp(W.macro.cpi, 1)}, tín dụng ${pp(W.sysCreditGrowthAnn, 1)}. Có dư địa nới lỏng nếu tỷ giá cho phép (VND mất giá ${pp(W.macro.fx, 1)}).`,
     options: [
       { label: 'Giảm lãi suất điều hành 0,5 điểm', apply: W => SBV.rate(-0.5) },
-      { label: 'Bơm 100 nghìn tỷ OMO 91 ngày, đảo hạn 100%', apply: W => SBV.omo('inject', 100000, 91, 1) },
+      { label: 'Bơm 100 nghìn tỷ OMO 91 ngày, lãi OMO −0,25', apply: W => SBV.omo('inject', 100000, 91, 1, W.sbv.omo - 0.25) },
       { label: 'Nới room hệ thống 2 điểm', apply: W => { W.sbv.sysRoom += 2; for (const b of W.banks) if (!b.dead) b.room += 2; W.addLog('Nới room tín dụng 2 điểm %.', 'good'); } },
       { label: 'Chưa làm gì', apply: () => {} }] },
   { id: 's_fx', mode: 'sbv', cool: 3, cond: W => W.macro.fx > 3, title: 'Tỷ giá vượt vùng an toàn',
@@ -1702,21 +1728,21 @@ const DECISIONS = [
     options: [
       { label: 'Bán giao ngay 3 tỷ USD', apply: W => SBV.spot(3) },
       { label: 'Bán kỳ hạn 5 tỷ USD, 3 tháng', apply: W => SBV.fwd(5, 3, 0) },
-      { label: 'Hút 150 nghìn tỷ qua tín phiếu 28 ngày để nâng lãi VND', apply: W => SBV.omo('absorb', 150000, 28, 1) },
+      { label: 'Hút 150 nghìn tỷ tín phiếu 28 ngày, lãi tín phiếu +1 để nâng lãi VND', apply: W => SBV.omo('absorb', 150000, 28, 1, W.sbv.bill + 1) },
       { label: 'Tăng lãi suất điều hành 0,5 điểm', apply: W => SBV.rate(0.5) },
       { label: 'Chưa làm gì', apply: () => {} }] },
   { id: 's_tight', mode: 'sbv', cool: 2, cond: W => W.tightness > 2, title: 'Thanh khoản hệ thống căng',
     text: W => `Lãi liên ngân hàng ${pp(W.market.ibON)}, độ căng ${fmt1(W.tightness)}. Ngân hàng yếu có thể mất khả năng chi trả.`,
     options: [
-      { label: 'Bơm 50 nghìn tỷ OMO 7 ngày, đảo hạn 100%', apply: W => SBV.omo('inject', 50000, 7, 1) },
-      { label: 'Bơm 150 nghìn tỷ OMO 28 ngày, đảo hạn 50%', apply: W => SBV.omo('inject', 150000, 28, 0.5) },
+      { label: 'Bơm 50 nghìn tỷ OMO 7 ngày, giữ lãi OMO', apply: W => SBV.omo('inject', 50000, 7, 1) },
+      { label: 'Bơm 150 nghìn tỷ OMO 28 ngày, lãi OMO −0,5 (hạ nhiệt mạnh)', apply: W => SBV.omo('inject', 150000, 28, 0.5, W.sbv.omo - 0.5) },
       { label: 'Hạ dự trữ bắt buộc 0,5 điểm', apply: W => SBV.set('rrrShort', -0.5, 0, 10, 'Dự trữ bắt buộc <12 tháng') },
       { label: 'Để thị trường tự cân bằng', apply: () => {} }] },
   { id: 's_loose', mode: 'sbv', cool: 3, cond: W => W.tightness < -0.6 && W.macro.fx > 1.5, title: 'Thanh khoản dư thừa, tỷ giá chịu áp lực',
     text: W => `Lãi liên ngân hàng ${pp(W.market.ibON)} thấp hơn lãi USD ${pp(W.macro.fedRate)}, tiền thừa gây sức ép tỷ giá.`,
     options: [
-      { label: 'Hút 80 nghìn tỷ tín phiếu 14 ngày, đảo hạn 100%', apply: W => SBV.omo('absorb', 80000, 14, 1) },
-      { label: 'Hút 200 nghìn tỷ tín phiếu 91 ngày, không đảo hạn', apply: W => SBV.omo('absorb', 200000, 91, 0) },
+      { label: 'Hút 80 nghìn tỷ tín phiếu 14 ngày, giữ lãi tín phiếu', apply: W => SBV.omo('absorb', 80000, 14, 1) },
+      { label: 'Hút 200 nghìn tỷ tín phiếu 91 ngày, lãi tín phiếu +0,5', apply: W => SBV.omo('absorb', 200000, 91, 0, W.sbv.bill + 0.5) },
       { label: 'Chưa làm gì', apply: () => {} }] },
   { id: 's_weak', mode: 'sbv', cool: 3, cond: W => W.banks.some(b => !b.dead && (b.liqFail > 0 || b.car() < W.sbv.carMin || b.reputation < -1)), title: 'Có ngân hàng yếu cần xử lý',
     text: W => { const ws = W.banks.filter(b => !b.dead && (b.liqFail > 0 || b.car() < W.sbv.carMin || b.reputation < -1)); W._weak = ws[0]; return ws.map(b => `${b.code}: CAR ${pp(b.car(), 1)}, NPL ${pp(b.nplRatio() * 100, 1)}, thanh khoản ${pp(b.liqReserve(), 0)}, uy tín ${b.reputation.toFixed(1)}`).join('; ') + '.'; },
@@ -1753,7 +1779,7 @@ const EVENT_DECISIONS = {
   usdout_sbv: { mode: 'sbv', title: 'USD rút ròng: NHNN phản ứng', text: 'Tỷ giá tăng vọt, dự trữ giảm 8 tỷ USD, thanh khoản VND căng.', options: [
     { label: 'Bán giao ngay 5 tỷ USD', apply: W => SBV.spot(5) },
     { label: 'Bán kỳ hạn 10 tỷ USD, 3 tháng', apply: W => SBV.fwd(10, 3, 0) },
-    { label: 'Tăng lãi suất 1 điểm và hút 100 nghìn tỷ tín phiếu', apply: W => { SBV.rate(1); SBV.omo('absorb', 100000, 28, 1); } },
+    { label: 'Tăng lãi suất điều hành 1 điểm và hút 100 nghìn tỷ tín phiếu lãi +1', apply: W => { SBV.rate(1); SBV.omo('absorb', 100000, 28, 1, W.sbv.bill + 1); } },
     { label: 'Chờ thị trường tự điều chỉnh', apply: () => {} }] },
   iran: { mode: 'sbv', title: 'Chiến sự Trung Đông: NHNN phản ứng', text: 'Giá dầu tăng, CPI sẽ nhích lên nhiều tháng, tỷ giá chịu áp lực.', options: [
     { label: 'Tăng lãi suất điều hành 0,5 điểm phòng ngừa', apply: W => SBV.rate(0.5) },
@@ -2061,7 +2087,7 @@ function loadGame() {
     const raw = localStorage.getItem('banksim-vn'); if (!raw) return false;
     const d = JSON.parse(raw); const w = new World(d.mode, d.playerId, d.diffKey);
     Object.assign(w, d); w.banks = d.banks.map(bd => { const b = new Bank(BANKS.find(x => x.id === bd.id), bd.isPlayer); Object.assign(b, bd); return b; });
-    w.player = d.mode === 'bank' ? w.banks.find(b => b.isPlayer) : null; w.pendingEvent = null; w.sbv.ops = w.sbv.ops || []; w.decisions = []; W = w; return true;
+    w.player = d.mode === 'bank' ? w.banks.find(b => b.isPlayer) : null; w.pendingEvent = null; w.sbv.ops = w.sbv.ops || []; w.sbv.bill = w.sbv.bill ?? w.sbv.omo - 0.5; w.decisions = []; W = w; return true;
   } catch (e) { return false; }
 }
 
