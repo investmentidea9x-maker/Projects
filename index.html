@@ -68,10 +68,10 @@ a{color:var(--accent)}
 .grid{display:grid;gap:12px}
 .g2{grid-template-columns:repeat(auto-fit,minmax(320px,1fr))}
 .g3{grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
-.g4{grid-template-columns:repeat(auto-fill,minmax(220px,1fr))}
-.dashfix{margin-bottom:14px;padding-bottom:12px;border-bottom:2px solid var(--line)}
-.dashfix .panel{padding:8px 10px}.dashfix .panel h2{font-size:12px;margin-bottom:4px}.dashfix .legend{font-size:10.5px}
-.dash-head{margin-bottom:8px;align-items:center}.dash-head b{margin-right:8px}
+.g4{grid-template-columns:repeat(4,minmax(0,1fr))}
+@media (max-width:1150px){.g4{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:760px){.g4{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:480px){.g4{grid-template-columns:1fr}}
 .panel{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px 14px;min-width:0}
 .panel h2{margin-bottom:8px}
 .panel p{margin:6px 0}
@@ -151,26 +151,33 @@ body.game{padding:0}
 .clock{display:flex;flex-direction:column;gap:4px;min-width:150px}
 .progress{height:4px;background:var(--line);border-radius:2px;overflow:hidden}
 .progress i{display:block;height:100%;width:0;background:var(--accent)}
-.scene-wrap{margin-inline:-16px;background:#0b1020;border-bottom:1px solid var(--line)}
+.scene-wrap{background:#0b1020;border:1px solid #30363d;border-radius:8px;overflow:hidden;min-width:0}
 .scene-box{position:relative;max-width:1280px;margin:0 auto}
 canvas#scene{display:block;width:100%;max-width:100%;aspect-ratio:480/140;height:auto;image-rendering:pixelated;image-rendering:crisp-edges}
 canvas#hud{position:absolute;left:0;top:0;width:100%;aspect-ratio:480/140;height:auto;pointer-events:none}
 .scene-wrap{position:relative}
-.evcard{position:absolute;right:12px;bottom:12px;max-width:min(360px,60%);background:rgba(13,17,23,.92);color:#e6edf3;border:1px solid #e3b341;border-radius:8px;padding:8px 10px;font-size:12px;line-height:1.4;z-index:3}
+.evcard{position:absolute;right:10px;bottom:10px;max-width:min(320px,46%);background:rgba(13,17,23,.92);color:#e6edf3;border:1px solid #e3b341;border-radius:8px;padding:6px 9px;font-size:11px;line-height:1.35;z-index:3}
 .evcard h4{margin:0 0 4px;font-size:13px;color:#ffd84a}
 .evcard .btn{margin-top:6px;background:#161b22;color:#e6edf3;border-color:#30363d}
 @media (max-width:700px){.evcard{position:static;max-width:none;border-radius:0;border-left:0;border-right:0}}
 .mktbar{background:#0d1117;color:#c9d1d9;font-family:var(--mono);font-size:12px;padding:5px 12px;border-top:1px solid #30363d;max-width:1280px;margin:0 auto;white-space:nowrap;overflow-x:auto}.mktbar b{color:#fff;font-weight:500}
 .ticker-wrap{overflow:hidden;background:#0b1020;color:#ffd84a;font-family:var(--mono);font-size:12px;height:20px;line-height:20px;white-space:nowrap;position:relative}
 .ticker{display:inline-block;white-space:nowrap;will-change:transform;padding-inline:8px}
-.split{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(280px,1fr);gap:12px;align-items:start;margin-top:4px}
-.split .left{min-width:0}
-.term{background:#0d1117;color:#c9d1d9;font-family:var(--mono);font-size:12px;border:1px solid #30363d;border-radius:8px;padding:8px 10px;height:min(72vh,720px);min-height:260px;overflow:auto;position:sticky;top:calc(env(safe-area-inset-top,0px) + 8px)}
+/* Sân khấu: dashboard vẽ ngay trên cùng màn hình với cảnh pixel; terminal bên phải; các tab chức năng ở dưới */
+.split{display:grid;grid-template-columns:minmax(0,2.1fr) minmax(260px,1fr);gap:10px;align-items:stretch;padding-top:6px}
+.stage{display:flex;flex-direction:column;background:#0b1020;border:1px solid #30363d;border-radius:8px;overflow:hidden;height:calc(100vh - 12px);min-width:0;box-sizing:border-box}
+.dash-area{position:relative;flex:1 1 auto;min-height:0}
+#dashcv{position:absolute;inset:0;width:100%;height:100%;display:block}
+.dash-ctl{position:absolute;top:5px;right:8px;display:flex;gap:4px;z-index:2}
+.dash-ctl button{background:#161b22;color:#c9d1d9;border:1px solid #30363d;border-radius:4px;font:11px var(--mono);padding:2px 7px;cursor:pointer}.dash-ctl button.on{background:#1f6feb;border-color:#1f6feb;color:#fff}
+.stage .scene-wrap{flex:0 0 auto;border:0;border-radius:0;border-top:1px solid #30363d}
+.term-wrap{position:relative;min-width:0}
+.term{background:#0d1117;color:#c9d1d9;font-family:var(--mono);font-size:12px;border:1px solid #30363d;border-radius:8px;padding:8px 10px;overflow:auto;position:absolute;inset:6px 0 0 0;box-sizing:border-box}
 .term-head{color:#8b949e;text-transform:uppercase;letter-spacing:.06em;font-size:11px;border-bottom:1px solid #30363d;padding-bottom:4px;margin-bottom:4px}
 .term .ln{white-space:pre-wrap;word-break:break-word;padding:1px 0;line-height:1.4}
 .term .t{color:#8b949e;margin-right:6px}.term .src{color:#79c0ff;margin-right:2px}
 .term .bad .msg{color:#ff7b72}.term .good .msg{color:#7ee787}.term .warn .msg{color:#e3b341}.term .info .msg{color:#79c0ff}.term .dim{color:#8b949e;border-bottom:1px dashed #30363d;margin-bottom:3px;padding-bottom:3px}
-@media (max-width:900px){.split{grid-template-columns:1fr}.term{position:static;height:280px}}
+@media (max-width:900px){.split{grid-template-columns:1fr}.stage{height:auto}.dash-area{height:560px}.term-wrap{height:260px}}
 /* start screen & modal */
 .start{max-width:960px;margin:24px auto}
 .start h1{font-size:30px;color:var(--accent);margin-bottom:4px}
@@ -831,8 +838,8 @@ const EVENTS = [
     apply: W => { W.addShock({ name: 'Chiến tranh thương mại', left: 10, sme: 0.9, demand: 0.92, gdp: -0.5, fx: 0.6 }); W.macro.fx += 0.8; } },
   { id: 'usdout', w: 1.5, cond: W => W.macro.fedRate - W.market.ibON > 1, title: 'Dòng vốn USD rút đột ngột', text: 'Nhà đầu tư nước ngoài bán ròng cổ phiếu và trái phiếu, doanh nghiệp găm giữ USD. Tỷ giá tăng vọt, NHNN phải bán dự trữ và hút VND qua tín phiếu; lãi suất liên ngân hàng tăng mạnh trong 3 tháng. Người dân rút tiền đồng mua USD và vàng.',
     apply: W => { W.addShock({ name: 'USD rút ròng', left: 3, ib: 2.0, dep: 1.5, fx: 1.0 }); W.macro.fx += 3.0; W.macro.reserves -= 8; } },
-  { id: 'gold', w: 1.2, cond: W => W.macro.cpi > 3.5 || W.macro.fx > 3, title: 'Sốt vàng', text: 'Giá vàng trong nước lập đỉnh, người dân xếp hàng mua vàng. Tiền gửi ngắn hạn bị rút để chuyển sang vàng trong 4 tháng, CASA giảm.',
-    apply: W => { W.addShock({ name: 'Sốt vàng', left: 4, dep: 2.5 }); } },
+  { id: 'gold', w: 1.2, cond: W => W.macro.cpi > 3.5 || W.macro.fx > 3, title: 'Sốt vàng', text: 'Giá vàng trong nước lập đỉnh, chênh lệch với thế giới nới rộng, người dân xếp hàng mua. Tiền gửi kỳ hạn bị rút để trả cho cửa hàng vàng và SJC, rồi quay lại hệ thống dưới dạng tiền gửi thanh toán của bên bán (phần lớn tại ngân hàng quốc doanh): tổng tiền gửi gần như không đổi, nhưng ngân hàng cổ phần mất nguồn kỳ hạn, một phần thành tiền mặt ngoài hệ thống, và cầu USD nhập lậu vàng ép tỷ giá.',
+    apply: W => { W.addShock({ name: 'Sốt vàng', left: 4, goldShift: 0.012, fx: 1.0 }); } },
   { id: 'fdi', w: 1.5, cond: W => W.macro.fx < 4, title: 'FDI kỷ lục', text: 'Các tập đoàn công nghệ chuyển nhà máy sang Việt Nam. Vốn ngoại vào mạnh, dự trữ ngoại hối tăng, VND lên giá nhẹ, cầu tín dụng doanh nghiệp phụ trợ tăng trong một năm.',
     apply: W => { W.addShock({ name: 'FDI kỷ lục', left: 12, demand: 1.08, gdp: 0.4 }); W.macro.fx -= 1.5; W.macro.reserves += 8; } },
   { id: 'recession', w: 1, cond: W => W.macro.gdp > 5.5, title: 'Suy thoái kinh tế toàn cầu', text: 'Mỹ và châu Âu rơi vào suy thoái, Fed cắt lãi suất khẩn cấp. Xuất khẩu Việt Nam giảm mạnh, thất nghiệp tăng, nợ tiêu dùng và doanh nghiệp xấu đi trong 12 tháng. Áp lực tỷ giá giảm vì USD yếu.',
@@ -1006,6 +1013,20 @@ class World {
       if (r > hi) b.pol.mltPref = +Math.max(0.5, b.pol.mltPref - 0.1).toFixed(2); else if (r < lo && b.pol.mltPref < 1.2) b.pol.mltPref = +(b.pol.mltPref + 0.05).toFixed(2); }
     if (b.nplRatio() > 0.045 && Math.random() < 0.3) b.sellToVamc(this);
   }
+  /* --- Sốt vàng: tiền mua vàng vẫn là tiền ngân hàng, chỉ đổi chủ và đổi kỳ hạn --- */
+  goldStep() {
+    const g = this.shock('goldShift'); if (g <= 0) { this.goldFlow = null; return; }
+    const S = this.sbv, alive = this.banks.filter(b => !b.dead); let pool = 0;
+    for (const b of alive) { const out = (b.dep.lt6 + b.dep.m6_12) * g * (b.type === 'jsb' ? 1.15 : 0.9); b.dep.lt6 -= out * 0.6; b.dep.m6_12 -= out * 0.4; b.cash -= out; pool += out; } // người gửi rút tiền kỳ hạn mua vàng
+    const leak = pool * 0.1, back = pool - leak; // ~10% thành tiền mặt găm giữ ngoài hệ thống
+    const w = alive.map(b => b.deposits() * (b.type === 'sob' ? 1.6 : 1)); const ws = sum(w); // cửa hàng vàng, SJC gửi thanh toán, nghiêng về ngân hàng quốc doanh
+    alive.forEach((b, i) => { const x = back * w[i] / ws; b.dep.casa += x; b.cash += x; });
+    let sold = 0;
+    if (S.goldSell) { sold = 1.5; this.macro.reserves -= sold; S.omoNet -= this.sysDeposits() * 0.003; // NHNN bán vàng bình ổn: nhập vàng bằng dự trữ, thu VND về (hút thanh khoản), chênh lệch giá hạ nhiệt
+      for (const sh of this.shocks) if (sh.goldShift) sh.left = Math.max(1, sh.left - 1); }
+    this.goldFlow = { pool, leak, back, sold };
+    this.addLog(`Sốt vàng: ${fmt0(pool)} tỷ tiền gửi kỳ hạn rút mua vàng, ${fmt0(back)} tỷ quay lại thành tiền gửi thanh toán của bên bán (nghiêng về ngân hàng quốc doanh), ${fmt0(leak)} tỷ thành tiền mặt ngoài hệ thống${sold ? `; NHNN bán vàng bình ổn, dự trữ −${fmt1(sold)} tỷ USD, hút VND` : ''}.`, 'warn');
+  }
   /* --- Tài khóa: Kho bạc Nhà nước, chi tiêu, đầu tư công, trái phiếu Chính phủ --- */
   initFiscal() {
     this.fiscal = { ...FISCAL, planNext: Math.round(FISCAL.plan * 1.15), invYTD: 0, bondYTD: 0, push: 1, impulse: 0, supply: 0, lastI: 0, lastB: 0, deficit: 0, inv12: [] };
@@ -1060,6 +1081,7 @@ class World {
     if (M.gdp < MAC.gGoal - 1.5 && M.cpi < 4 && M.fx < 3 && S.refi > 2.5 && this.month - this.lastPolicyMove >= 6) { /* thực tế 2024–2025 NHNN giữ 4,5% dù GDP dưới 8; chỉ cắt khi tăng trưởng thật sự yếu */ S.refi -= 0.25; S.omo -= 0.25; S.disc -= 0.25; S.bill -= 0.25; this.lastPolicyMove = this.month; this.announce = 'cut'; this.addLog(`NHNN giảm lãi suất điều hành 0,25 điểm % theo yêu cầu thúc đẩy tăng trưởng (GDP ${pp(M.gdp, 1)} dưới mục tiêu ${pp(MAC.gGoal, 0)}, CPI ${pp(M.cpi, 1)} còn dư địa).`, 'good'); }
     // Bơm/hút OMO theo độ căng thanh khoản
     S.omoNet = this.tightness > 1.5 ? this.sysDeposits() * 0.01 : this.tightness < -0.8 ? -this.sysDeposits() * 0.005 : 0;
+    S.goldSell = this.shocks.some(sh => sh.goldShift && sh.left <= 3) && M.reserves > 60; // sốt vàng kéo dài: NHNN bán vàng qua 4 NHTM quốc doanh (2024)
     if (M.fx > 3) S.omoNet -= this.sysDeposits() * (0.006 + 0.004 * Math.min(2, M.fx - 3)); // tín phiếu hút tiền nâng lãi VND khi VND mất giá trên 3%/năm (3/2024: NHNN phát hành lại tín phiếu)
     if (M.fx > 4 && M.reserves > 45) { const usd = Math.round(clamp((M.fx - 4) / 0.2 * 0.5 + 1, 1, Math.min(8, (M.reserves - 45) * 0.15)) * 2) / 2; M.reserves -= usd; M.fx -= usd * 0.2; S.fxSell = usd * 25000; /* để VND trượt trong biên độ, chỉ bán mạnh khi mất giá trên 4%/năm (2024: bán ~7 tỷ USD, VND vẫn −5%) */
       if (this.month % 3 === 0) this.addLog(`NHNN bán ${fmt1(usd)} tỷ USD và hút tiền qua tín phiếu để ổn định tỷ giá (VND mất giá ${pp(M.fx, 1)}/năm, dự trữ ${fmt1(M.reserves)} tỷ USD).`, 'warn'); } else S.fxSell = 0;
@@ -1154,6 +1176,7 @@ class World {
     this.macroStep();
     this.updateMarket();
     for (const b of this.banks) if (!b.isPlayer) this.aiPolicy(b);
+    this.goldStep();
     for (const b of this.banks) b.step(this);
     // cú sốc giảm dần
     this.shocks = this.shocks.filter(s => --s.left > 0);
@@ -1508,17 +1531,20 @@ function renderShell() {
       <div class="side-foot"><button class="btn small" id="saveBtn">Lưu</button><button class="btn small" id="restartBtn">Ván mới</button></div>
     </aside>
     <main class="main">
-      <div class="scene-wrap"><div class="scene-box"><canvas id="scene" width="480" height="140" aria-label="Cảnh trụ sở ngân hàng"></canvas><canvas id="hud" aria-hidden="true"></canvas><div id="evcard" class="evcard" hidden></div></div><div class="mktbar" id="mktbar"></div><div class="ticker-wrap"><div class="ticker" id="ticker"></div></div></div>
       <div class="split">
-        <div class="left"><div class="dashfix" id="dash"></div><div class="pane" id="pane"></div></div>
-        <div class="term" id="term"><div class="term-head">terminal · nhật ký điều hành · mới nhất ở trên</div><div id="termBody"></div></div>
+        <div class="stage" id="stage">
+          <div class="dash-area"><canvas id="dashcv" aria-label="Bảng điều khiển"></canvas><div class="dash-ctl" id="dashCtl"></div></div>
+          <div class="scene-wrap"><div class="scene-box"><canvas id="scene" width="480" height="140" aria-label="Cảnh trụ sở ngân hàng"></canvas><canvas id="hud" aria-hidden="true"></canvas><div id="evcard" class="evcard" hidden></div></div><div class="mktbar" id="mktbar"></div><div class="ticker-wrap"><div class="ticker" id="ticker"></div></div></div>
+        </div>
+        <div class="term-wrap"><div class="term" id="term"><div class="term-head">terminal · nhật ký điều hành · mới nhất ở trên</div><div id="termBody"></div></div></div>
       </div>
+      <div class="pane" id="pane"></div>
     </main>
   </div>
   <div id="modal"></div>`;
   Term.body = $('#termBody'); for (const l of Term.lines) Term.body.prepend(termLine(l));
   if (!Term.lines.length) termPush(W.month, isBank ? `Bạn tiếp quản ${B.name}. Tổng tài sản ${fmt0(B.totalAssets())} tỷ, CAR ${pp(B.car(), 1)}, nợ xấu ${pp(B.nplRatio() * 100, 1)}, room ${B.room}%.` : `Bạn là Thống đốc. Hệ thống 9 ngân hàng, tổng dư nợ ${fmt0(W.sysLoans())} tỷ.`, 'info', 'HỆ THỐNG');
-  Scene.init($('#scene'), $('#hud')); Scene.onMonth();
+  Scene.init($('#scene'), $('#hud')); Scene.onMonth(); renderDashCtl();
   $('#playBtn').onclick = togglePlay;
   $('#speedSel').onchange = e => { Clock.speed = +e.target.value; Clock.acc = Math.min(Clock.acc, Clock.speed); };
   $('#speedSel').value = String(Clock.speed);
@@ -1607,7 +1633,6 @@ function renderPane() {
   const pane = $('#pane');
   const isBank = W.mode === 'bank';
   const B = isBank ? W.player : W.banks[selectedBank];
-  const dash = $('#dash'); if (dash && (!dash.innerHTML || dash.dataset.range !== String(dashRange))) { dash.innerHTML = dashPane(B); dash.dataset.range = String(dashRange); }
   switch (tab) {
     case 'report': pane.innerHTML = reportPane(); break;
     case 'overview': pane.innerHTML = isBank ? overviewBank(B) : overviewSbv(); break;
@@ -2094,7 +2119,7 @@ const EVENT_DECISIONS = {
     { label: 'Trích dự phòng chủ động, cắt cổ tức về 0', apply: (W, B) => { B.pol.divRate = 0; B.addLog(W.month, 'Cắt cổ tức để giữ vốn.', ''); } },
     { label: 'Mua lại nợ BĐS giá rẻ từ ngân hàng khác (khẩu vị +1, tăng trưởng +4)', apply: (W, B) => { ACT.num(B, 'appetite', 1, 1, 5, 'Khẩu vị rủi ro'); ACT.num(B, 'growthTarget', 4, 0, 40, 'Mục tiêu tăng trưởng', '%'); } },
     { label: 'Không thay đổi', apply: () => {} }] },
-  gold: { mode: 'bank', title: 'Sốt vàng: tiền gửi ngắn hạn đang rút', text: 'Trong 4 tháng tới tiền gửi ngắn hạn chảy sang vàng.', options: [
+  gold: { mode: 'bank', title: 'Sốt vàng: tiền gửi kỳ hạn đang rút', text: 'Trong 4 tháng tới khách rút tiền gửi kỳ hạn mua vàng. Tiền quay lại hệ thống dưới dạng CASA của cửa hàng vàng, phần lớn vào ngân hàng quốc doanh, nên ngân hàng cổ phần mất nguồn kỳ hạn và LDR tăng.', options: [
     { label: 'Tăng lãi huy động <6 tháng lên sát trần', apply: (W, B) => { const S = W.sbv; ACT.rate(B, 'rLt6', Math.max(0, S.depCap6m - B.pol.rLt6)); } },
     { label: 'Đẩy chương trình tiền gửi 12 tháng (+0,5 điểm)', apply: (W, B) => ACT.rate(B, 'rGt12', 0.5) },
     { label: 'Không thay đổi', apply: () => {} }] },
@@ -2108,6 +2133,10 @@ const EVENT_DECISIONS = {
     { label: W => `Hút ròng (engine tự tính, tháng tới ≈ ${fmt0(SBV.liqSize(1))} tỷ, mục tiêu liên NH ${pp(SBV.ibTarget(1))})`, apply: W => SBV.stance(1) },
     { label: W => `Tăng lãi suất điều hành (+${SBV.rateStep(1).toFixed(2).replace('.', ',')} theo Taylor)`, apply: W => SBV.rateDir(1) },
     { label: 'Chờ thị trường tự điều chỉnh', apply: () => {} }] },
+  gold_sbv: { mode: 'sbv', title: 'Sốt vàng: NHNN phản ứng', text: 'Tiền mua vàng vẫn nằm trong hệ thống nhưng chuyển từ tiền gửi kỳ hạn ở ngân hàng cổ phần sang tài khoản thanh toán của cửa hàng vàng tại ngân hàng quốc doanh; cầu USD nhập lậu vàng ép tỷ giá. Bán vàng bình ổn tốn dự trữ (nhập vàng) nhưng thu VND về và hạ chênh lệch giá.', options: [
+    { label: 'Bán vàng bình ổn qua 4 NHTM quốc doanh (dự trữ −1,5 tỷ USD/tháng, hút VND, sốt vàng ngắn lại)', apply: W => { W.sbv.goldSell = true; W.addLog('NHNN bán vàng miếng bình ổn qua 4 ngân hàng quốc doanh và SJC.', 'warn'); } },
+    { label: W => `Hút ròng để nâng lãi VND, giảm hấp dẫn của vàng (tháng tới ≈ ${fmt0(SBV.liqSize(1))} tỷ)`, apply: W => SBV.stance(1) },
+    { label: 'Không can thiệp, để thị trường tự điều chỉnh', apply: W => { W.sbv.goldSell = false; } }] },
   iran: { mode: 'sbv', title: 'Chiến sự Trung Đông: NHNN phản ứng', text: 'Giá dầu tăng, CPI sẽ nhích lên nhiều tháng, tỷ giá chịu áp lực.', options: [
     { label: W => `Tăng lãi suất điều hành (+${SBV.rateStep(1).toFixed(2).replace('.', ',')} theo Taylor)`, apply: W => SBV.rateDir(1) },
     { label: 'Giữ nguyên, chờ số liệu CPI', apply: () => {} },
@@ -2364,10 +2393,66 @@ function dashPane(B) {
   return `<div class="actions dash-head"><b>Bảng điều khiển</b><span class="muted small">Khoảng thời gian:</span> ${rng}</div>
   <div class="grid g4">${d.charts.map(c => chartBox(c.id, c.title, c.series, c.note)).join('')}</div>`;
 }
-function drawDash(B) {
-  const d = dashSeries(B); if (!d.h.length) return;
-  for (const c of d.charts) { const m0 = c.m0 ?? d.m0; if (c.stack) stackChart(c.id, c.series, m0, 170); else lineChart(c.id, c.series, { m0, lines: c.lines, zero: c.zero, h: 170 }); }
-  document.querySelectorAll('[data-range]').forEach(b => b.onclick = () => { dashRange = +b.dataset.range; renderPane(); });
+const DARKC = { '--s1': '#79c0ff', '--s2': '#ff7b72', '--s3': '#7ee787', '--s4': '#e3b341', '--s5': '#f778ba', '--s6': '#d2a8ff' };
+const dc = k => DARKC[k] || cssVar(k);
+const Stage = { hover: null, panels: [] };
+function renderDashCtl() { const el = $('#dashCtl'); if (!el) return; el.innerHTML = [12, 36, 300].map(r => `<button class="${dashRange === r ? 'on' : ''}" data-range="${r}">${r === 300 ? 'Từ 2022' : r + ' tháng'}</button>`).join(''); el.querySelectorAll('button').forEach(b => b.onclick = () => { dashRange = +b.dataset.range; renderDashCtl(); drawCharts(W.mode === 'bank' ? W.player : W.banks[selectedBank]); }); }
+function drawDash(B) { // dashboard vẽ trên canvas của sân khấu, cùng màn hình với cảnh pixel
+  const cv = $('#dashcv'); if (!cv) return; const d = dashSeries(B); if (!d.h.length) return;
+  const dpr = window.devicePixelRatio || 1; const Wd = cv.clientWidth || 800;
+  if (Wd < 640) { const cols0 = 2, rows0 = Math.ceil(d.charts.length / cols0); cv.parentElement.style.height = (24 + rows0 * 126 + 6) + 'px'; } else cv.parentElement.style.height = ''; // màn hẹp: mỗi ô cao 120px, sân khấu dài ra và cuộn trang
+  const Ht = cv.clientHeight || 500;
+  if (cv.width !== Math.round(Wd * dpr) || cv.height !== Math.round(Ht * dpr)) { cv.width = Math.round(Wd * dpr); cv.height = Math.round(Ht * dpr); }
+  const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, Wd, Ht);
+  const grad = g.createLinearGradient(0, 0, 0, Ht); grad.addColorStop(0, '#0b1020'); grad.addColorStop(1, '#101a33'); g.fillStyle = grad; g.fillRect(0, 0, Wd, Ht); // bầu trời đêm nối xuống cảnh pixel
+  g.fillStyle = '#8b949e'; g.font = '11px ' + cssVar('--mono'); g.textAlign = 'left'; g.fillText('BẢNG ĐIỀU KHIỂN · ' + (W.mode === 'bank' ? B.name : 'HỆ THỐNG & VĨ MÔ') + ' · ' + W.dateStr(), 10, 16);
+  const charts = d.charts; const n = charts.length; const cols = Wd >= 980 ? 4 : Wd >= 640 ? 3 : 2; const rows = Math.ceil(n / cols);
+  const top = 24, gap = 6, padX = 6; const cw = (Wd - padX * 2 - gap * (cols - 1)) / cols, ch = (Ht - top - 6 - gap * (rows - 1)) / rows;
+  Stage.panels = [];
+  charts.forEach((c, k) => { const x = padX + (k % cols) * (cw + gap), y = top + Math.floor(k / cols) * (ch + gap);
+    g.fillStyle = 'rgba(13,17,23,.82)'; g.strokeStyle = '#30363d'; g.lineWidth = 1; g.fillRect(x, y, cw, ch); g.strokeRect(x + 0.5, y + 0.5, cw - 1, ch - 1);
+    g.fillStyle = '#c9d1d9'; g.font = '600 10.5px ' + cssVar('--mono'); g.textAlign = 'left'; let title = c.title.toUpperCase(); while (g.measureText(title).width > cw - 12 && title.length > 4) title = title.slice(0, -2) + '…'; g.fillText(title, x + 6, y + 13);
+    const legendH = 12; const rect = { x: x + 4, y: y + 17, w: cw - 8, h: ch - 17 - legendH - 4 };
+    const hover = Stage.hover && Stage.hover.k === k ? Stage.hover.i : null;
+    plotSeries(g, rect, c.series, { m0: c.m0 ?? d.m0, lines: c.lines, zero: c.zero, stack: c.stack, hover });
+    let lx = x + 6; g.font = '9.5px ' + cssVar('--mono'); g.textAlign = 'left'; const ly = y + ch - 5;
+    c.series.forEach(sr => { const t = sr.name || ''; const w = g.measureText(t).width + 14; if (lx + w > x + cw - 4) return; g.fillStyle = dc(sr.color); g.fillRect(lx, ly - 7, 7, 7); g.fillStyle = '#8b949e'; g.fillText(t, lx + 10, ly); lx += w; });
+    if (c.note && lx + g.measureText(c.note).width < x + cw - 4) { g.fillStyle = '#6e7681'; g.fillText(c.note, lx + 4, ly); }
+    Stage.panels.push({ k, x, y, w: cw, h: ch, rect, n: Math.max(...c.series.map(sr => sr.data.length)) }); });
+  if (!cv._bound) { cv._bound = true;
+    cv.addEventListener('mousemove', e => { const r = cv.getBoundingClientRect(); const mx = e.clientX - r.left, my = e.clientY - r.top; const p = Stage.panels.find(q => mx >= q.x && mx <= q.x + q.w && my >= q.y && my <= q.y + q.h);
+      const nh = p ? { k: p.k, i: clamp(Math.round((mx - p.rect.x - 34) / (p.rect.w - 34 - 6) * (p.n - 1)), 0, p.n - 1) } : null;
+      if (JSON.stringify(nh) !== JSON.stringify(Stage.hover)) { Stage.hover = nh; drawDash(W.mode === 'bank' ? W.player : W.banks[selectedBank]); } });
+    cv.addEventListener('mouseleave', () => { if (Stage.hover) { Stage.hover = null; drawDash(W.mode === 'bank' ? W.player : W.banks[selectedBank]); } }); }
+}
+function plotSeries(g, r, series, opts = {}) { // bộ vẽ chuỗi thời gian nền tối cho sân khấu
+  const n = Math.max(...series.map(s => s.data.length)); if (n < 2) { g.fillStyle = '#6e7681'; g.font = '10px ' + cssVar('--mono'); g.fillText('cần ≥ 2 tháng', r.x + 34, r.y + 20); return; }
+  const padL = 34, padR = 6, padT = 4, padB = 12; const m0 = opts.m0 || 0;
+  let lo, hi;
+  if (opts.stack) { const tot = []; for (let i = 0; i < n; i++) tot.push(sum(series.map(l => l.data[i] || 0))); lo = 0; hi = Math.max(...tot) * 1.05 || 1; }
+  else { const all = series.flatMap(s => s.data).concat(opts.lines || []); lo = opts.zero === false ? Math.min(...all) : Math.min(0, ...all); hi = Math.max(...all); if (hi === lo) hi = lo + 1; const span = hi - lo; hi += span * 0.08; if (opts.zero === false) lo -= span * 0.08; }
+  const tight = hi - lo < 0.5 * Math.abs(hi);
+  const fA = v => Math.abs(v) >= 1e6 ? (v / 1e6).toFixed(1).replace('.', ',') + 'tr' : Math.abs(v) >= 1000 ? (tight ? fmt0(v) : Math.round(v / 1000) + 'k') : (hi - lo > 20 ? v.toFixed(0) : v.toFixed(1).replace('.', ','));
+  const x = i => r.x + padL + (r.w - padL - padR) * i / (n - 1), y = v => r.y + padT + (r.h - padT - padB) * (1 - (v - lo) / (hi - lo));
+  g.font = '9px ' + cssVar('--mono'); g.textAlign = 'right'; g.lineWidth = 1;
+  for (let i = 0; i <= 3; i++) { const v = lo + (hi - lo) * i / 3; g.strokeStyle = 'rgba(255,255,255,.08)'; g.beginPath(); g.moveTo(r.x + padL, y(v)); g.lineTo(r.x + r.w - padR, y(v)); g.stroke(); g.fillStyle = '#8b949e'; g.fillText(fA(v), r.x + padL - 4, y(v) + 3); }
+  g.textAlign = 'center'; const labels = Math.max(2, Math.floor((r.w - padL - padR) / 70)); const stepL = Math.max(1, Math.round((n - 1) / (labels - 1)));
+  for (let i = 0; i < n; i += stepL) g.fillText(W.dateStr(m0 + i), x(i), r.y + r.h - 2);
+  if (m0 < 0 && -m0 < n) { const xb = x(-m0); g.fillStyle = 'rgba(255,255,255,.05)'; g.fillRect(r.x + padL, r.y + padT, xb - r.x - padL, r.h - padT - padB); g.setLineDash([3, 3]); g.strokeStyle = '#6e7681'; g.beginPath(); g.moveTo(xb, r.y + padT); g.lineTo(xb, r.y + r.h - padB); g.stroke(); g.setLineDash([]); }
+  (opts.lines || []).forEach(v => { g.setLineDash([4, 3]); g.strokeStyle = '#ff7b72'; g.beginPath(); g.moveTo(r.x + padL, y(v)); g.lineTo(r.x + r.w - padR, y(v)); g.stroke(); g.setLineDash([]); });
+  if (opts.stack) { const acc = new Array(n).fill(0);
+    series.forEach(l => { g.fillStyle = dc(l.color); g.globalAlpha = 0.85; g.beginPath(); for (let i = 0; i < n; i++) { const v = acc[i] + (l.data[i] || 0); i ? g.lineTo(x(i), y(v)) : g.moveTo(x(i), y(v)); } for (let i = n - 1; i >= 0; i--) g.lineTo(x(i), y(acc[i])); g.closePath(); g.fill(); g.globalAlpha = 1; for (let i = 0; i < n; i++) acc[i] += l.data[i] || 0; }); }
+  else series.forEach(s => { g.strokeStyle = dc(s.color); g.lineWidth = 1.6; g.beginPath(); s.data.forEach((v, i) => i ? g.lineTo(x(i), y(v)) : g.moveTo(x(i), y(v))); g.stroke(); const last = s.data[s.data.length - 1]; g.fillStyle = dc(s.color); g.beginPath(); g.arc(x(s.data.length - 1), y(last), 2.5, 0, Math.PI * 2); g.fill(); });
+  const hv = opts.hover;
+  if (hv != null && hv >= 0 && hv < n) {
+    g.strokeStyle = '#e6edf3'; g.setLineDash([2, 3]); g.beginPath(); g.moveTo(x(hv), r.y + padT); g.lineTo(x(hv), r.y + r.h - padB); g.stroke(); g.setLineDash([]);
+    const rows = series.filter(s => s.data[hv] != null).map(s => ({ s, t: `${s.name || ''} ${Math.abs(s.data[hv]) >= 1000 ? fmt0(s.data[hv]) : s.data[hv].toFixed(2).replace('.', ',')}` }));
+    g.font = '9.5px ' + cssVar('--mono'); const bw = Math.max(...rows.map(q => g.measureText(q.t).width), 50) + 16, bh = 12 * (rows.length + 1) + 6;
+    let bx = x(hv) + 6; if (bx + bw > r.x + r.w - padR) bx = x(hv) - bw - 6; const by = r.y + padT + 1;
+    g.fillStyle = 'rgba(13,17,23,.95)'; g.strokeStyle = '#8b949e'; g.fillRect(bx, by, bw, bh); g.strokeRect(bx + 0.5, by + 0.5, bw - 1, bh - 1);
+    g.textAlign = 'left'; g.fillStyle = '#8b949e'; g.fillText(W.dateStr(m0 + hv), bx + 5, by + 10);
+    rows.forEach((q, i) => { g.fillStyle = dc(q.s.color); g.fillRect(bx + 5, by + 15 + i * 12, 7, 7); g.fillStyle = '#e6edf3'; g.fillText(q.t, bx + 15, by + 22 + i * 12); });
+  }
 }
 
 function lineChart(id, series, opts = {}) {

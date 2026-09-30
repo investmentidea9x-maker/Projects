@@ -16,7 +16,7 @@ Game giả lập điều hành ngân hàng theo mô hình Việt Nam, chạy th�
   - Lãi suất điều hành: hai nút **Giảm / Tăng**; bước bằng một nửa khoảng cách tới quy tắc Taylor, tối thiểu 0,25, tối đa 1,0 điểm (đi ngược Taylor thì 0,25); trần huy động dưới 6 tháng đi theo. Họp điều hành hàng quý cũng chỉ hỏi giữ, tăng hay giảm.
   - Còn lại: dự trữ bắt buộc, room, các trần an toàn, Thông tư 02 và xử lý ngân hàng yếu bằng nút bước cố định. Bảng "Nghiệp vụ đang mở" theo dõi số dư, lãi, kỳ hạn còn lại và đảo hạn.
 - **Quyết định**: với NHNN, mọi lựa chọn chỉ nêu hướng (hút ròng, bơm ròng, bán USD, tăng hay giảm lãi) kèm lượng dự kiến engine tính sẵn; ví dụ khi USD rút ròng, chọn "hút ròng" thì engine tự hút đủ để nâng chênh lệch lãi VND–USD, không phải tự nhập số. Khi một chỉ số vượt ngưỡng (CAR, LDR, vốn ngắn hạn cho vay TDH, nợ xấu, thanh khoản, NIM, room, rút tiền; với NHNN là CPI, tăng trưởng, tỷ giá, thanh khoản hệ thống, ngân hàng yếu) hoặc một sự kiện lớn xảy ra (USD rút, NHNN tăng lãi, khủng hoảng trái phiếu, sốt vàng, rút tiền hàng loạt, chiến sự), game tự dừng và đưa 3–5 lựa chọn xử lý với hiệu ứng cụ thể. Mỗi cảnh báo có thời gian chờ để không lặp liên tục.
-- **Bảng điều khiển cố định** ngay dưới khung pixel, không đổi khi chuyển tab: 12 biểu đồ chuỗi thời gian (quy mô, lợi nhuận, NIM/ROE/chi phí vốn, CAR, nợ xấu, LDR, vốn ngắn hạn cho vay TDH, thanh khoản, tín dụng so với room, lãi suất, vĩ mô, cơ cấu nguồn vốn), hover xem giá trị từng tháng, chọn 12/36 tháng hoặc toàn bộ. Các tab bên dưới chỉ điều hướng phần chức năng. Terminal bên phải in dòng mới nhất ở trên cùng.
+- **Sân khấu một màn hình**: dashboard vẽ ngay trên cùng khung tối với cảnh pixel. Phần trên của khung là lưới 12–14 biểu đồ (quy mô, lợi nhuận, NIM/ROE/chi phí vốn, CAR, nợ xấu, LDR, vốn ngắn hạn cho vay TDH, thanh khoản, tín dụng so với room, lãi suất, vĩ mô, tỷ giá, cơ cấu nguồn vốn; với NHNN là tăng trưởng/lạm phát, Taylor, khoảng cách sản lượng, tỷ giá, dự trữ, lãi suất hệ thống, chu kỳ, tín dụng và M2, nợ xấu, sức khỏe ngân hàng, dư nợ) vẽ như bảng HUD, tự co giãn theo màn hình, rê chuột xem giá trị từng tháng, nút 12/36 tháng/từ 2022 ở góc; phần dưới là thành phố pixel với các bảng HUD, thanh thị trường và ticker. Terminal bên phải (dòng mới nhất ở trên). Các tab bên trái chỉ điều hướng phần chức năng nằm dưới sân khấu. Trên điện thoại các khối xếp dọc.
 - Tab **Bảng cân đối & P&L**: ngoài bảng số, có 6 biểu đồ: cơ cấu tài sản (cột chồng), cơ cấu nguồn vốn (cột chồng), dư nợ theo phân khúc, nợ xấu theo nhóm 2–5, dự phòng đã trích so với nợ nhóm 3–5, cấu phần lợi nhuận tháng (thu nhập lãi, chi phí lãi, thu phí, chi phí hoạt động, dự phòng, lợi nhuận sau thuế).
 - Tab **Tuân thủ**: mỗi chỉ tiêu an toàn (CAR, LDR, vốn ngắn hạn cho vay TDH, dự trữ thanh khoản, nợ xấu nội bảng và gộp VAMC, tín dụng so với room) có biểu đồ riêng kèm đường giới hạn hiện hành (nét đứt), nên thấy ngay khoảng cách tới ngưỡng và xu hướng.
 - Tab **Hệ thống & vĩ mô**: biểu đồ cột so sánh 9 ngân hàng (CAR, nợ xấu, LDR, ROE, dự trữ thanh khoản, tổng tài sản; cột đổi màu khi vượt ngưỡng, vạch đỏ là giới hạn) và hai chuỗi thời gian toàn hệ thống (dư nợ và tiền gửi; LDR hệ thống, nợ xấu hệ thống, CAR thấp nhất).
@@ -86,6 +86,24 @@ Hiệu chỉnh rút ra từ backtest (đã đưa vào engine):
 - **Kỹ thuật**: mốc khởi đầu game có thể đặt ở bất kỳ điểm dữ liệu nào (`new World(mode, id, diff, { startIdx, scale, scripted })`), tháng 0 là điểm dữ liệu cuối (T9/2025), tháng 1 là T10/2025.
 
 Còn lệch: tín dụng 2025 (sim 13% so với 19,8% thật) và GDP 2025 (7,4 so với 8,2): năm 2025 có cú bứt phá room 20%+, BĐS nóng và xuất khẩu chạy trước thuế mà mô hình chỉ tái tạo một phần; lãi cho vay cao hơn thật ~0,5 điểm; dự trữ ngoại hối giảm chậm hơn thật ~5 tỷ USD.
+
+## Sốt vàng: tiền mua vàng vẫn là tiền ngân hàng
+
+Người mua vàng rút tiền gửi kỳ hạn trả cho cửa hàng vàng và SJC; bên bán gửi lại vào tài khoản thanh toán, phần lớn ở ngân hàng quốc doanh. Vì vậy sự kiện "Sốt vàng" không làm tổng tiền gửi hệ thống giảm, mà:
+
+- mỗi tháng (4 tháng) chuyển ~1,2% tiền gửi kỳ hạn dưới 12 tháng (ngân hàng cổ phần ×1,15, quốc doanh ×0,9) thành CASA của bên bán, phân bổ theo quy mô tiền gửi và nghiêng về quốc doanh (×1,6): ngân hàng cổ phần mất nguồn kỳ hạn, LDR tăng, chi phí vốn của quốc doanh giảm;
+- ~10% số tiền rút thành tiền mặt găm giữ ngoài hệ thống (rò rỉ thật duy nhất ở phía tiền gửi);
+- cầu USD nhập lậu vàng ép tỷ giá (+1 điểm áp lực suốt đợt sốt);
+- NHNN có thể bán vàng bình ổn qua 4 ngân hàng quốc doanh và SJC (như 2024): nhập vàng bằng dự trữ (−1,5 tỷ USD/tháng), thu VND về (hút thanh khoản 0,3% tiền gửi), đợt sốt ngắn lại. Chế độ ngân hàng: NHNN tự động bán từ tháng thứ hai nếu dự trữ trên 60 tỷ USD. Chế độ NHNN: quyết định "Sốt vàng: NHNN phản ứng" (bán vàng, hút ròng nâng lãi VND, hoặc không can thiệp).
+
+## Sốt vàng: tiền mua vàng vẫn là tiền ngân hàng
+
+Người mua vàng rút tiền gửi kỳ hạn trả cho cửa hàng vàng và SJC; bên bán gửi lại vào tài khoản thanh toán, phần lớn ở ngân hàng quốc doanh. Vì vậy sự kiện "Sốt vàng" không làm tổng tiền gửi hệ thống giảm, mà:
+
+- mỗi tháng (4 tháng) chuyển ~1,2% tiền gửi kỳ hạn dưới 12 tháng (ngân hàng cổ phần ×1,15, quốc doanh ×0,9) thành CASA của bên bán, phân bổ theo quy mô tiền gửi và nghiêng về quốc doanh (×1,6): ngân hàng cổ phần mất nguồn kỳ hạn, LDR tăng, chi phí vốn của quốc doanh giảm;
+- ~10% số tiền rút thành tiền mặt găm giữ ngoài hệ thống (rò rỉ thật duy nhất ở phía tiền gửi);
+- cầu USD nhập lậu vàng ép tỷ giá (+1 điểm áp lực suốt đợt sốt);
+- NHNN có thể bán vàng bình ổn qua 4 ngân hàng quốc doanh và SJC (như 2024): nhập vàng bằng dự trữ (−1,5 tỷ USD/tháng), thu VND về (hút thanh khoản 0,3% tiền gửi), đợt sốt ngắn lại. Chế độ ngân hàng: NHNN tự động bán từ tháng thứ hai nếu dự trữ trên 60 tỷ USD. Chế độ NHNN: quyết định "Sốt vàng: NHNN phản ứng" (bán vàng, hút ròng nâng lãi VND, hoặc không can thiệp).
 
 ## Tài khóa: Kho bạc Nhà nước, đầu tư công, trái phiếu Chính phủ, mục tiêu GDP 8%
 
