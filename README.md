@@ -39,6 +39,15 @@ Trò chơi bắt đầu tháng 10/2025 trên nền 45 tháng lịch sử vĩ mô
 
 ## Mô hình vĩ mô và chu kỳ
 
+- **Khối ràng buộc tăng trưởng – lạm phát – thất nghiệp – lãi suất** (bảng "Ràng buộc vĩ mô" ở Tổng quan hiện công thức kèm số hiện tại):
+  - Khoảng cách sản lượng: gap = 0,92·gap + (g − 6,5)/12.
+  - IS: g → 6,5 − 0,6·(r − 1,0) + 0,06·(tín dụng − 12) − 0,1·max(0, Fed − 4), với r = lãi suất tái cấp vốn − kỳ vọng lạm phát (thích nghi).
+  - Phillips: Δπ mỗi tháng = 0,04·gap + 0,006·(tín dụng − 12) + 0,02·max(0, tỷ giá − 2) + 0,05·(3,5 − π) + cú sốc cung.
+  - Okun: u → 2,3 − 0,35·(g − 6,5), có độ trễ.
+  - Taylor: i = 1,0 + π + 0,5·(π − 3,5) + 0,4·gap + 0,3·max(0, tỷ giá − 3); NHNN tự động (chế độ ngân hàng) đi theo từng bước 0,5 mỗi quý, Thống đốc (chế độ NHNN) thấy mức gợi ý.
+  - Nợ xấu hình thành nhanh hơn khi lãi suất thực cao, tăng trưởng thấp và thất nghiệp tăng.
+  - Kiểm tra: giữ lãi suất 8% ba năm → tăng trưởng 6,4% xuống 4,5%, thất nghiệp 2,1% lên 2,9%, lạm phát 3,8% xuống 3,0%, nợ xấu 2,1% lên 3,5%; hạ về 2% → tăng trưởng 8,9%, thất nghiệp 1,55%, lạm phát 4,9%, VND mất giá.
+
 - **Lãi suất là hệ quả, không phải tham số.** Lãi huy động thị trường = neo lãi suất điều hành + phụ trội thanh khoản (độ căng liên ngân hàng) + kỳ vọng lạm phát + mức độ thiếu nguồn của các ngân hàng. Lãi cho vay tham chiếu = chi phí vốn bình quân thực tế của hệ thống + chi phí hoạt động + phụ trội rủi ro (nợ xấu) + phụ trội thanh khoản + biên. Lãi huy động và cho vay "hệ thống" hiển thị là bình quân gia quyền lãi thực tế đang áp dụng của 9 ngân hàng.
 - **Tỷ giá** theo dõi ở dạng tuyệt đối (VND/USD) và xu hướng %/năm; xu hướng do chênh lệch lãi suất VND–USD, lạm phát và can thiệp của NHNN quyết định.
 - **Chu kỳ nội sinh.** Bất động sản có quán tính, nóng lên khi lãi suất thực thấp và tín dụng nhanh, đổ vỡ khi NHNN thắt chặt; lạm phát đi theo tín dụng, chênh lệch sản lượng và tỷ giá; Fed đi theo chu kỳ Mỹ ~7 năm từng bước 0,25. Pha chu kỳ (Mở rộng, Quá nóng, Thắt chặt, Suy giảm, Phục hồi) được suy ra từ trạng thái và hiển thị khắp nơi.
