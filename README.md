@@ -8,7 +8,7 @@ Game giả lập điều hành ngân hàng theo mô hình Việt Nam, chạy th�
 
 - Chọn một trong 9 ngân hàng (4 NHTM Nhà nước, 5 NHTM cổ phần) để làm Tổng giám đốc, hoặc chọn vai Thống đốc NHNN để điều tiết cả hệ thống.
 - Giao diện thanh bên: điều hướng, đồng hồ, nút chạy, KPI nhanh ở cột trái; khung pixel, bảng nội dung và terminal ở giữa.
-- Bấm **Chạy**: mỗi tháng trôi qua trong vài giây (chỉnh tốc độ được). Phía trên là cảnh pixel trụ sở với khách gửi tiền (xanh lá), vay (xanh dương) và rút tiền (đỏ) ra vào; các bảng thông số an toàn, kết quả và thị trường vẽ ngay trên khung ở độ phân giải màn hình. Phía dưới là bảng điều hành và terminal nhật ký.
+- Bấm **Chạy**: đồng hồ chạy theo **tuần** (1 s/tuần mặc định, chỉnh 2 s → 0,12 s), 4 tuần một tháng; nút **+1 tuần** đi từng bước. Kinh tế và bảng cân đối cập nhật cuối mỗi tháng; sự kiện rơi vào tuần bất kỳ với xác suất 1/4 của tháng và cách nhau tối thiểu 3 tuần, nên nhịp sự kiện giống quá khứ (khoảng 5 sự kiện/năm, cách nhau trung vị 8 tuần, cú sốc lớn ~1/năm). Hành động của bạn được ghi đúng tuần. Phía trên là cảnh pixel trụ sở với khách gửi tiền (xanh lá), vay (xanh dương) và rút tiền (đỏ) ra vào; các bảng thông số an toàn, kết quả và thị trường vẽ ngay trên khung ở độ phân giải màn hình. Phía dưới là bảng điều hành và terminal nhật ký.
 - **Cột công cụ bên phải** (ngân hàng, luôn hiện để thao tác nhanh, phía trên terminal): mọi tham số chỉnh bằng nút bấm theo bước (lãi suất ±0,25, khẩu vị ±1, tăng trưởng ±2, cơ cấu ngành ±5 điểm hoặc chọn mẫu, TPCP, đệm tiền mặt, số hóa, mạng lưới, cổ tức) và các hành động một lần (giấy tờ có giá 1/2/5% tài sản, trái phiếu cấp 2, tăng vốn 10/20/40%, bán nợ VAMC).
 - **Cột công cụ bên phải** (NHNN): điều hành theo hướng, lượng và bước do thị trường quyết.
   - Thanh khoản: ba nút **Bơm ròng / Trung tính / Hút ròng**. Engine tự tính lượng mỗi tháng để đưa lãi liên ngân hàng về mục tiêu: hút ròng → mục tiêu = max(lãi OMO + 1, Fed + 0,5) (giữ chênh lệch lãi VND–USD dương); bơm ròng → mục tiêu = lãi OMO − 0,4. Lượng = khoảng cách lãi suất × tiền gửi hệ thống / 40 (1 điểm ≈ 2,5% tiền gửi), tối thiểu 10 nghìn tỷ, tối đa 2% tiền gửi mỗi tháng. Hút bằng tín phiếu 28 ngày tại lãi mục tiêu + 0,25 (sàn mềm của liên ngân hàng, định giá lại mỗi tháng), bơm bằng mua kỳ hạn 7 ngày tại lãi OMO; đảo hạn khi còn giữ hướng, thu hồi sớm đợt ngược chiều, tất toán dần khi về trung tính; dừng tự động khi lãi đã ở mục tiêu hoặc thị trường đã bão hòa.
@@ -16,7 +16,7 @@ Game giả lập điều hành ngân hàng theo mô hình Việt Nam, chạy th�
   - Lãi suất điều hành: hai nút **Giảm / Tăng**; bước bằng một nửa khoảng cách tới quy tắc Taylor, tối thiểu 0,25, tối đa 1,0 điểm (đi ngược Taylor thì 0,25); trần huy động dưới 6 tháng đi theo. Họp điều hành hàng quý cũng chỉ hỏi giữ, tăng hay giảm.
   - Còn lại: dự trữ bắt buộc, room, các trần an toàn, Thông tư 02 và xử lý ngân hàng yếu bằng nút bước cố định. Bảng "Nghiệp vụ đang mở" theo dõi số dư, lãi, kỳ hạn còn lại và đảo hạn.
 - **Quyết định**: với NHNN, mọi lựa chọn chỉ nêu hướng (hút ròng, bơm ròng, bán USD, tăng hay giảm lãi) kèm lượng dự kiến engine tính sẵn; ví dụ khi USD rút ròng, chọn "hút ròng" thì engine tự hút đủ để nâng chênh lệch lãi VND–USD, không phải tự nhập số. Khi một chỉ số vượt ngưỡng (CAR, LDR, vốn ngắn hạn cho vay TDH, nợ xấu, thanh khoản, NIM, room, rút tiền; với NHNN là CPI, tăng trưởng, tỷ giá, thanh khoản hệ thống, ngân hàng yếu) hoặc một sự kiện lớn xảy ra (USD rút, NHNN tăng lãi, khủng hoảng trái phiếu, sốt vàng, rút tiền hàng loạt, chiến sự), game tự dừng và đưa 3–5 lựa chọn xử lý với hiệu ứng cụ thể. Mỗi cảnh báo có thời gian chờ để không lặp liên tục.
-- Tab **Dòng thời gian**: nhật ký hành động theo trục thời gian, năm làn: Bạn (nút ở cột công cụ), Tự động (những gì máy đổi mỗi tháng: lãi suất, mục tiêu, phát hành, VAMC), Quyết định (lựa chọn khi chỉ số vượt ngưỡng), Sự kiện (lựa chọn khi có sự kiện), NHNN (NHNN tự động ở chế độ ngân hàng; ở chế độ NHNN là các nghiệp vụ engine thực hiện theo hướng bạn chọn: tín phiếu, OMO, bán USD, bán vàng, giữ biên độ). Mỗi chấm là một tháng, số trong chấm là số hành động, rê chuột để đọc, bấm tên làn để ẩn/hiện; bảng chi tiết theo tháng và nút sao chép. Các tháng có hành động được đánh dấu ▲ trên biểu đồ dashboard, rê chuột thấy số hành động.
+- Tab **Dòng thời gian**: nhật ký hành động theo trục thời gian (đặt đúng tuần), mỗi hành động kèm **lý do**: nút bạn bấm ghi bối cảnh lúc đó (CAR, LDR, nợ xấu, thanh khoản, room, liên ngân hàng, CPI và các cảnh báo đang bật; với NHNN là CPI, GDP, tỷ giá, Taylor, dự trữ); chế độ tự động ghi quy tắc nào kích hoạt (LDR > 80 nâng lãi, sát trần LDR phát hành GTCG, CAR chật trái phiếu cấp 2…); quyết định ghi điều kiện vượt ngưỡng; sự kiện ghi mô tả; NHNN ghi quy tắc (Taylor, biên độ, tín phiếu, bán USD, bán vàng) hoặc hướng bạn đã chọn. Năm làn: Bạn (nút ở cột công cụ), Tự động (những gì máy đổi mỗi tháng: lãi suất, mục tiêu, phát hành, VAMC), Quyết định (lựa chọn khi chỉ số vượt ngưỡng), Sự kiện (lựa chọn khi có sự kiện), NHNN (NHNN tự động ở chế độ ngân hàng; ở chế độ NHNN là các nghiệp vụ engine thực hiện theo hướng bạn chọn: tín phiếu, OMO, bán USD, bán vàng, giữ biên độ). Mỗi chấm là một tháng, số trong chấm là số hành động, rê chuột để đọc, bấm tên làn để ẩn/hiện; bảng chi tiết theo tháng và nút sao chép. Các tháng có hành động được đánh dấu ▲ trên biểu đồ dashboard, rê chuột thấy số hành động.
 - **Chế độ tự động** (nút 🤖 ở thanh bên): máy điều hành thay bạn. Ngân hàng: áp chính sách AI mỗi tháng (neo lãi suất thị trường, tăng trưởng theo room, phát hành giấy tờ có giá khi sát trần LDR, trái phiếu cấp 2 khi CAR chật, VAMC khi nợ xấu cao, giữ hồ sơ kỳ hạn); NHNN: quy tắc Taylor, tín phiếu khi tỷ giá căng, bán USD giữ biên độ, nới room khi Chính phủ thúc. Sự kiện có lựa chọn tự chọn phương án đầu, các quyết định không làm dừng đồng hồ; bạn vẫn có thể bấm nút ở cột công cụ nhưng máy ghi đè lãi suất và mục tiêu mỗi tháng. Tắt để điều hành lại.
 - **Màn hình ba phần**: thanh bên trái (điều hướng, đồng hồ, KPI), sân khấu ở giữa, cột phải gồm công cụ điều hành (trên) và terminal (dưới).
 - **Sân khấu một màn hình**: dashboard vẽ ngay trên cùng khung tối với cảnh pixel. Phần trên của khung là lưới 12–14 biểu đồ (quy mô, lợi nhuận, NIM/ROE/chi phí vốn, CAR, nợ xấu, LDR, vốn ngắn hạn cho vay TDH, thanh khoản, tín dụng so với room, lãi suất, vĩ mô, tỷ giá, cơ cấu nguồn vốn; với NHNN là tăng trưởng/lạm phát, Taylor, khoảng cách sản lượng, tỷ giá, dự trữ, lãi suất hệ thống, chu kỳ, tín dụng và M2, nợ xấu, sức khỏe ngân hàng, dư nợ) vẽ như bảng HUD, tự co giãn theo màn hình, rê chuột xem giá trị từng tháng, nút 12/36 tháng/từ 2022 ở góc; phần dưới là thành phố pixel với các bảng HUD, thanh thị trường và ticker. Terminal bên phải (dòng mới nhất ở trên). Các tab bên trái chỉ điều hướng phần chức năng nằm dưới sân khấu. Trên điện thoại các khối xếp dọc.
@@ -69,16 +69,26 @@ Trò chơi bắt đầu tháng 10/2025 trên nền 45 tháng lịch sử vĩ mô
 
 | Chỉ tiêu | T6/2024 | T12/2024 | T6/2025 | T9/2025 | RMSE 21 tháng |
 |---|---|---|---|---|---|
-| CPI % | 3,5 / 4,3 | 3,4 / 2,9 | 3,6 / 3,6 | 4,1 / 3,4 | 0,6 |
-| GDP % | 6,8 / 7,3 | 7,2 / 7,5 | 7,4 / 8,2 | 7,4 / 8,2 | 0,6 |
+| CPI % | 3,5 / 4,3 | 3,5 / 2,9 | 3,6 / 3,6 | 4,1 / 3,4 | 0,6 |
+| GDP % | 6,7 / 7,3 | 7,2 / 7,5 | 7,4 / 8,2 | 7,4 / 8,2 | 0,6 |
 | Lãi tái cấp vốn % | 4,5 / 4,5 | 4,5 / 4,5 | 4,5 / 4,5 | 4,5 / 4,5 | 0,0 |
-| Liên ngân hàng O/N % | 4,0 / 4,5 | 3,8 / 4,3 | 4,3 / 3,5 | 4,1 / 4,7 | 1,2 |
-| USD/VND | 24.618 / 25.460 | 24.982 / 25.480 | 25.365 / 26.150 | 25.609 / 26.380 | 607 |
-| Lãi huy động 12 tháng % | 5,4 / 4,9 | 5,3 / 5,2 | 5,7 / 4,9 | 5,5 / 4,9 | 0,5 |
-| Lãi cho vay bình quân % | 8,1 / 7,5 | 7,8 / 7,7 | 8,1 / 7,2 | 8,1 / 7,3 | 0,5 |
-| Tín dụng YoY % | 14,0 / 15,0 | 13,3 / 15,1 | 12,7 / 19,3 | 12,8 / 19,8 | 4,0 |
-| Dự trữ ngoại hối tỷ USD | 92 / 85 | 90 / 80 | 87 / 80 | 85 / 80 | 7,5 |
-| Nợ xấu % | 2,0 / 2,3 | 2,5 / 2,1 | 2,6 / 2,2 | 2,7 / 2,2 | 0,4 |
+| Liên ngân hàng O/N % | 4,2 / 4,5 | 3,8 / 4,3 | 4,3 / 3,5 | 4,0 / 4,7 | 1,2 |
+| USD/VND | 24.652 / 25.460 | 25.014 / 25.480 | 25.390 / 26.150 | 25.632 / 26.380 | 586 |
+| Lãi huy động 12 tháng % | 5,6 / 4,9 | 5,3 / 5,2 | 5,6 / 4,9 | 5,6 / 4,9 | 0,6 |
+| Lãi cho vay bình quân % | 8,2 / 7,5 | 7,8 / 7,7 | 8,0 / 7,2 | 8,1 / 7,3 | 0,5 |
+| Tín dụng YoY % | 14,0 / 15,0 | 13,2 / 15,1 | 12,8 / 19,3 | 13,0 / 19,8 | 4,0 |
+| Dự trữ ngoại hối tỷ USD | 87,5 / 85 | 86,8 / 80 | 83,6 / 80 | 81,6 / 80 | 4,3 |
+| Nợ xấu % | 2,2 / 2,3 | 2,5 / 2,1 | 2,6 / 2,2 | 2,7 / 2,2 | 0,4 |
+
+Hành động của NHNN mô phỏng so với thực tế (mô phỏng in kèm lý do trong `tools/backtest.js`):
+
+| Thời điểm | NHNN thật | NHNN mô phỏng |
+|---|---|---|
+| T3/2024 | Phát hành lại tín phiếu (11/3), hút ~170 nghìn tỷ | Hút qua tín phiếu từ khi VND mất giá > 3% (0,6–1,4% tiền gửi/tháng) |
+| T4–T7/2024 | Bán ~6–7 tỷ USD giao ngay từ 19/4; đấu thầu vàng rồi bán vàng qua 4 NHTM quốc doanh từ 3/6 | Bán vàng bình ổn tháng thứ hai của sốt vàng (T4–T5), bán USD giữ biên độ và theo mức vượt 4% (T5–T6, ~1–3,5 tỷ/tháng) |
+| T8–T9/2024 | Ngừng tín phiếu, bơm OMO; Fed hạ 0,5 | Ngừng hút khi VND về dưới 3%; Fed theo đường thật |
+| T11–T12/2024 | Tín phiếu trở lại, bán thêm 2–3 tỷ USD sau bầu cử Mỹ | Bán 1–2,5 tỷ USD khi VND lại vượt 4% (T11–T12) |
+| 2025 | Giữ 4,5% cả năm; thúc tín dụng, nới room; không bán nhiều USD | Giữ 4,5% cả năm (không cắt vì Fed còn cao/tỷ giá, không tăng vì CPI < 4,3); nới room theo sự kiện thúc tăng trưởng; bán 1–2 tỷ USD T6/2025 khi thuế quan ép tỷ giá |
 
 Hiệu chỉnh rút ra từ backtest (đã đưa vào engine):
 - **NHNN tự động**: giữ lãi suất điều hành như 2024–2025 (không cắt theo Taylor khi Fed còn cao hơn 0,5 điểm hoặc VND mất giá trên 2%; chỉ tăng khi CPI trên 4,3% và khoảng cách Taylor lớn, hoặc tỷ giá vỡ biên độ với dự trữ thấp; cắt vì tăng trưởng chỉ khi GDP dưới 6,5%); phát hành tín phiếu từ khi VND mất giá trên 3%/năm, bán USD từ trên 4%/năm với lượng tỷ lệ theo mức vượt; nới room cho cả hệ thống khi Chính phủ thúc tăng trưởng.
