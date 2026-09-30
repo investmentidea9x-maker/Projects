@@ -853,12 +853,12 @@ class World {
     this.diffKey = diff; this.diff = DIFF[diff] || DIFF.real;
     this.month = 0; this.year = START.y; this.monthOfYear = START.mo + 1;
     const L = HIST_N - 1; const yoyFx = (HIST.usd[L] / HIST.usd[L - 12] - 1) * 100;
-    this.macro = { gdp: HIST.gdp[L], cpi: HIST.cpi[L], fedRate: HIST.fed[L], fx: +Math.min(4, yoyFx * 0.6).toFixed(2), usd: HIST.usd[L], re: HIST.re[L], rePrev: HIST.re[L - 1], reserves: HIST.res[L], m2: HIST.m2[L], oil: 0,
+    this.macro = { gdp: HIST.gdp[L], cpi: HIST.cpi[L], fedRate: HIST.fed[L], fx: +Math.min(4, yoyFx * 0.6).toFixed(2), usd: HIST.usd[L], usdY0: HIST.usd[35] /* cuối 12/2024 */, re: HIST.re[L], rePrev: HIST.re[L - 1], reserves: HIST.res[L], m2: HIST.m2[L], oil: 0,
       u: HIST.u[L], pie: HIST.cpi.slice(L - 5, L + 1).reduce((a, b) => a + b, 0) / 6, gap: 0 };
     for (let i = L - 23; i <= L; i++) this.macro.gap = MAC.gapDecay * this.macro.gap + (HIST.gdp[i] - MAC.gStar) / 12; // khoảng cách sản lượng tích lũy từ lịch sử
     this.us = { t: 38, period: 84 }; // chu kỳ Mỹ đang đi xuống: Fed vừa bắt đầu hạ lãi suất
     this.lastEv = {};
-    this.sbv = { refi: 4.5, disc: 3.0, omo: 4.0, depCap6m: 4.75, rrrShort: 3.0, rrrLong: 1.0, ldrMax: 85, mltMax: 30, carMin: 8, roomOn: true, sysRoom: 16, forbearance: false, omoNet: 0, fxSell: 0, fxSpot: 0, ops: [], bill: 3.5, stance: 0, fxStance: 'none' };
+    this.sbv = { refi: 4.5, disc: 3.0, omo: 4.0, depCap6m: 4.75, rrrShort: 3.0, rrrLong: 1.0, ldrMax: 85, mltMax: 30, carMin: 8, roomOn: true, sysRoom: 16, forbearance: false, omoNet: 0, fxSell: 0, fxSpot: 0, ops: [], bill: 3.5, stance: 0, fxStance: 'none', band: 5 };
     this.sbv.refi = HIST.refi[HIST_N - 1]; this.sbv.omo = this.sbv.refi - 0.5; this.sbv.disc = this.sbv.refi - 1.5; this.sbv.bill = this.sbv.refi - 1.0;
     this.market = {};
     this.shocks = []; this.log = []; this.eventQueue = [];
@@ -1017,7 +1017,8 @@ class World {
     }
     // Bơm/hút OMO theo độ căng thanh khoản
     S.omoNet = this.tightness > 1.5 ? this.sysDeposits() * 0.01 : this.tightness < -0.8 ? -this.sysDeposits() * 0.005 : 0;
-    if (M.fx > 4) { S.fxSell = this.sysDeposits() * 0.004; M.reserves -= 2; M.fx -= 0.6; } else S.fxSell = 0;
+    if (M.fx > 3 && M.reserves > 45) { const usd = Math.round(clamp((M.fx - 2.5) / 0.3 * 0.5, 0.5, Math.min(8, (M.reserves - 45) * 0.15)) * 2) / 2; M.reserves -= usd; M.fx -= usd * 0.3; S.fxSell = usd * 25000; S.omoNet -= this.sysDeposits() * 0.006; // bán USD theo mức vượt 2,5% và hút tiền qua tín phiếu để nâng lãi VND
+      if (this.month % 3 === 0) this.addLog(`NHNN bán ${fmt1(usd)} tỷ USD và hút tiền qua tín phiếu để ổn định tỷ giá (VND mất giá ${pp(M.fx, 1)}/năm, dự trữ ${fmt1(M.reserves)} tỷ USD).`, 'warn'); } else S.fxSell = 0;
   }
   macroStep() {
     const M = this.macro, S = this.sbv;
@@ -1039,7 +1040,13 @@ class World {
     M.taylor = MAC.rStar + M.cpi + 0.5 * (M.cpi - MAC.piStar) + 0.4 * M.gap + 0.3 * Math.max(0, M.fx - 3);
     // tỷ giá: chênh lệch lãi suất USD–VND tạo áp lực; can thiệp làm giảm
     const pressure = 0.35 * (M.fedRate - this.market.ibON) + 0.6 + 0.15 * Math.max(0, M.cpi - 4);
-    M.fx = clamp(M.fx + 0.08 * (pressure - M.fx) + noise() * 2, -2, 12);
+    M.fx = clamp(M.fx + 0.12 * (pressure - M.fx) + noise() * 1.2, -2, 12);
+    // Biên độ tỷ giá: NHNN giữ VND trong biên độ ±band quanh tỷ giá trung tâm. Vượt biên độ thì tự động bán USD (tốn dự trữ, hút VND)
+    // chừng nào dự trữ còn trên mức an toàn ~3 tháng nhập khẩu (45 tỷ USD); cạn dự trữ thì biên độ vỡ và VND mất giá nhanh.
+    const band = S.band ?? 5; S.bandSold = 0;
+    if (M.fx > band && M.reserves > 45) { const usd = Math.round(clamp((M.fx - band) / 0.3 + 0.5, 0, Math.min(6, (M.reserves - 45) * 0.2)) * 2) / 2;
+      if (usd >= 0.5) { M.reserves -= usd; M.fx -= usd * 0.3; S.fxSell = (S.fxSell || 0) + usd * 25000; S.bandSold = usd; this.addLog(`NHNN bán ${fmt1(usd)} tỷ USD giữ biên độ ±${band}%: VND mất giá ${pp(M.fx, 1)}/năm, dự trữ còn ${fmt1(M.reserves)} tỷ USD.`, 'warn'); } }
+    else if (M.fx > band + 1 && M.reserves <= 45 && this.monthOfYear % 3 === 0) this.addLog(`Dự trữ ngoại hối ${fmt1(M.reserves)} tỷ USD dưới mức an toàn: NHNN không giữ được biên độ, VND mất giá ${pp(M.fx, 1)}/năm.`, 'bad');
     M.usd = Math.round(M.usd * (1 + M.fx / 1200)); // tỷ giá tuyệt đối VND/USD trượt theo áp lực
     M.reserves += 0.4 - (M.fx > 3 ? 0.8 : 0); // can thiệp bán USD đã trừ trực tiếp vào dự trữ
     // Bất động sản: lãi suất thực thấp và tín dụng nhanh làm nóng; có quán tính nên tạo chu kỳ bùng nổ – đổ vỡ
@@ -1113,6 +1120,7 @@ class World {
     for (const b of this.banks) if (b.dead && !b.announced) { b.announced = true; this.addLog(`${b.name} bị đưa vào diện kiểm soát đặc biệt (${b.deadReason}).`, 'bad'); this.addShock({ name: 'Bất ổn hệ thống', left: 3, dep: 1.5, ib: 1 }); }
     // cuối năm
     if (this.monthOfYear === 12) {
+      this.macro.usdY0 = this.macro.usd; // mốc tỷ giá đầu năm mới
       for (const b of this.banks) if (!b.dead) b.yearEnd(this);
       this.sysLoansYearStart = this.sysLoans();
       if (this.mode === 'bank') { this.sbv.sysRoom = clamp(15 + (this.macro.cpi < 4 ? 1 : -2) + (this.macro.gdp < 6 ? 1 : 0), 8, 20); }
@@ -1144,6 +1152,7 @@ const app = $('#app');
 const Clock = { playing: false, speed: 4000, acc: 0, last: 0, raf: false };
 const Term = { lines: [], body: null };
 function statusOf(ok, warn) { return ok ? 'good' : warn ? 'warn' : 'bad'; }
+function ytdFx(M) { const y0 = M.usdY0 || M.usd; const c = (M.usd / y0 - 1) * 100; return (c >= 0 ? '+' : '') + pp(c, 1); } // thay đổi tỷ giá từ đầu năm
 
 /* ---- terminal ---- */
 function termPush(m, msg, cls, src) {
@@ -1310,10 +1319,10 @@ const Scene = {
       box(cw - 198, 40, 190, [
         ['Tổng TS', fmt0(B.totalAssets() / 1000) + 'k tỷ'], ['LN tháng', fmt0(B.lastPnl.net) + ' tỷ', st(B.lastPnl.net > 0, true)], ['ROE', pp(h1 ? h1.roe : 0, 1)], ['NIM', pp(h1 ? h1.nim : 0, 2)], ['Chi phí vốn', pp(B.costOfFunds(), 2)], ['Điểm CEO', String(B.score)],
       ], 'Kết quả');
-      this.mktBar(`LNH <b>${pp(K.ibON)}</b> · TCV <b>${pp(S.refi)}</b> · HĐ 12T <b>${pp(K.gt12)}</b> · cho vay <b>${pp(K.lend)}</b> · CPI <b>${pp(M.cpi, 1)}</b> · GDP <b>${pp(M.gdp, 1)}</b> · USD/VND <b>${fmt0(M.usd)}</b> (${M.fx >= 0 ? '+' : ''}${pp(M.fx, 1)}) · HĐ hệ thống <b>${pp(K.depSys)}</b> · cho vay hệ thống <b>${pp(K.lendSys)}</b> · chu kỳ <b>${W.cyclePhase().name}</b>`);
+      this.mktBar(`LNH <b>${pp(K.ibON)}</b> · TCV <b>${pp(S.refi)}</b> · HĐ 12T <b>${pp(K.gt12)}</b> · cho vay <b>${pp(K.lend)}</b> · CPI <b>${pp(M.cpi, 1)}</b> · GDP <b>${pp(M.gdp, 1)}</b> · USD/VND <b>${fmt0(M.usd)}</b> (${ytdFx(M)} từ đầu năm · đà ${M.fx >= 0 ? '+' : ''}${pp(M.fx, 1)}/năm · biên độ ±${S.band ?? 5}%) · HĐ hệ thống <b>${pp(K.depSys)}</b> · cho vay hệ thống <b>${pp(K.lendSys)}</b> · chu kỳ <b>${W.cyclePhase().name}</b>`);
     } else {
       box(8, 40, 200, [
-        ['Chu kỳ', W.cyclePhase().name, W.cyclePhase().cls], ['CPI', pp(M.cpi, 1), st(M.cpi <= 4.5 && M.cpi >= 2, M.cpi < 6)], ['GDP / thất nghiệp', `${pp(M.gdp, 1)} / ${pp(M.u ?? 0, 1)}`, st(M.gdp >= 6.5, M.gdp >= 5.5)], ['USD/VND', `${fmt0(M.usd)} (${M.fx >= 0 ? '+' : ''}${pp(M.fx, 1)})`, st(Math.abs(M.fx) < 3, M.fx < 5)],
+        ['Chu kỳ', W.cyclePhase().name, W.cyclePhase().cls], ['CPI', pp(M.cpi, 1), st(M.cpi <= 4.5 && M.cpi >= 2, M.cpi < 6)], ['GDP / thất nghiệp', `${pp(M.gdp, 1)} / ${pp(M.u ?? 0, 1)}`, st(M.gdp >= 6.5, M.gdp >= 5.5)], ['USD/VND', `${fmt0(M.usd)} (${ytdFx(M)})`, st(Math.abs(M.fx) < 3, M.fx < 5)],
         ['Dự trữ', fmt1(M.reserves) + ' tỷ USD', st(M.reserves > 80, M.reserves > 50)], ['Tín dụng YoY', pp(W.sysCreditGrowthAnn ?? 12, 1), st((W.sysCreditGrowthAnn ?? 12) <= 16 && (W.sysCreditGrowthAnn ?? 12) >= 10, true)], ['Nợ xấu HT', pp(W.sysNpl() * 100, 2), st(W.sysNpl() < 0.03, W.sysNpl() < 0.05)],
       ], 'Vĩ mô');
       const inj = sum(S.ops.filter(o => o.kind === 'inject').map(o => o.amt)), abs = sum(S.ops.filter(o => o.kind === 'absorb').map(o => o.amt)), fwd = sum(S.ops.filter(o => o.kind === 'fwd').map(o => o.amt));
@@ -1520,7 +1529,7 @@ function updateTop() {
       + kpiCell('Thất nghiệp', pp(M.u ?? 0, 2), statusOf((M.u ?? 0) < 2.6, (M.u ?? 0) < 3.5))
       + kpiCell('Taylor gợi ý', pp(M.taylor ?? 0), statusOf(Math.abs((M.taylor ?? S.refi) - S.refi) < 0.5, Math.abs((M.taylor ?? S.refi) - S.refi) < 1.5))
       + kpiCell('GDP', pp(M.gdp, 1), statusOf(M.gdp >= 6.5, M.gdp >= 5.5))
-      + kpiCell('USD/VND', fmt0(M.usd), statusOf(Math.abs(M.fx) < 3, M.fx < 5))
+      + kpiCell('USD/VND', `${fmt0(M.usd)} <span class="muted">${ytdFx(M)}</span>`, statusOf(Math.abs(M.fx) < 3, M.fx < 5))
       + kpiCell('Xu hướng tỷ giá/năm', (M.fx >= 0 ? '+' : '') + pp(M.fx, 1))
       + kpiCell('Chu kỳ', W.cyclePhase().name)
       + kpiCell('Dự trữ ngoại hối', fmt1(M.reserves) + ' tỷ USD', statusOf(M.reserves > 80, M.reserves > 50))
@@ -1847,6 +1856,7 @@ function sbvPane() {
     </div>
     <div class="panel"><h2>Can thiệp tỷ giá</h2>
       <p class="small muted">Chọn cách can thiệp, lượng do engine tính theo mức VND mất giá vượt 2,5%/năm. Giao ngay: bán USD từ dự trữ, hút VND ngay, tỷ giá hạ ngay (tối đa 10 tỷ USD hoặc 8% dự trữ mỗi tháng). Kỳ hạn 3 tháng: hạ nhiệt kỳ vọng mà chưa tốn dự trữ, đến hạn mới giao USD, ngân hàng được hủy một nửa nếu VND đã ổn định. Dự trữ <b>${fmt1(M.reserves)}</b> tỷ USD · VND mất giá ${pp(M.fx, 1)}/năm · USD/VND ${fmt0(M.usd)}.</p>
+      ${pol('band', 'Biên độ tỷ giá quanh tỷ giá trung tâm', 1, 2, 8, '±' + (S.band ?? 5) + '%', 'Vượt biên độ thì NHNN tự bán USD giữ tỷ giá (tốn dự trữ), chỉ khi dự trữ > 45 tỷ USD')}
       <div class="arow"><div class="al"><span class="lbl">Cách can thiệp</span><span class="hint">${fs === 'none' ? 'Không can thiệp' : fs === 'spot' ? 'Bán giao ngay khi cần' : 'Bán kỳ hạn khi cần'}</span></div>${seg('fxs', ['none', 'spot', 'fwd'], fs, o => o === 'none' ? 'Không can thiệp' : o === 'spot' ? 'Bán giao ngay' : 'Bán kỳ hạn 3 tháng')}</div>
       <p class="small">${fs === 'none' ? 'Thị trường tự điều chỉnh; dự trữ chỉ đổi theo cán cân thanh toán.' : fxPlan >= 0.5 ? `Tháng tới dự kiến bán <b>${fmt1(fxPlan)}</b> tỷ USD ${fs === 'spot' ? 'giao ngay' : 'kỳ hạn'}.` : 'VND đang trong vùng an toàn, tháng tới không bán.'}</p>
     </div>
@@ -2437,7 +2447,7 @@ function loadGame() {
     const raw = localStorage.getItem('banksim-vn'); if (!raw) return false;
     const d = JSON.parse(raw); const w = new World(d.mode, d.playerId, d.diffKey);
     Object.assign(w, d); w.banks = d.banks.map(bd => { const b = new Bank(BANKS.find(x => x.id === bd.id), bd.isPlayer); Object.assign(b, bd); if (!b.mltShare) b.initTenor(b.spec); if (b.pol.mltPref == null) b.pol.mltPref = 1; return b; });
-    w.player = d.mode === 'bank' ? w.banks.find(b => b.isPlayer) : null; w.pendingEvent = null; w.sbv.ops = w.sbv.ops || []; w.sbv.bill = w.sbv.bill ?? w.sbv.omo - 0.5; w.decisions = []; W = w; return true;
+    w.player = d.mode === 'bank' ? w.banks.find(b => b.isPlayer) : null; w.pendingEvent = null; w.sbv.ops = w.sbv.ops || []; w.sbv.bill = w.sbv.bill ?? w.sbv.omo - 0.5; w.sbv.band = w.sbv.band ?? 5; w.macro.usdY0 = w.macro.usdY0 ?? w.macro.usd; w.decisions = []; W = w; return true;
   } catch (e) { return false; }
 }
 
