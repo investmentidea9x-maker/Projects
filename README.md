@@ -16,7 +16,7 @@ Game giả lập điều hành ngân hàng theo mô hình Việt Nam, chạy th�
   - Lãi suất điều hành: hai nút **Giảm / Tăng**; bước bằng một nửa khoảng cách tới quy tắc Taylor, tối thiểu 0,25, tối đa 1,0 điểm (đi ngược Taylor thì 0,25); trần huy động dưới 6 tháng đi theo. Họp điều hành hàng quý cũng chỉ hỏi giữ, tăng hay giảm.
   - Còn lại: dự trữ bắt buộc, room, các trần an toàn, Thông tư 02 và xử lý ngân hàng yếu bằng nút bước cố định. Bảng "Nghiệp vụ đang mở" theo dõi số dư, lãi, kỳ hạn còn lại và đảo hạn.
 - **Quyết định**: với NHNN, mọi lựa chọn chỉ nêu hướng (hút ròng, bơm ròng, bán USD, tăng hay giảm lãi) kèm lượng dự kiến engine tính sẵn; ví dụ khi USD rút ròng, chọn "hút ròng" thì engine tự hút đủ để nâng chênh lệch lãi VND–USD, không phải tự nhập số. Khi một chỉ số vượt ngưỡng (CAR, LDR, vốn ngắn hạn cho vay TDH, nợ xấu, thanh khoản, NIM, room, rút tiền; với NHNN là CPI, tăng trưởng, tỷ giá, thanh khoản hệ thống, ngân hàng yếu) hoặc một sự kiện lớn xảy ra (USD rút, NHNN tăng lãi, khủng hoảng trái phiếu, sốt vàng, rút tiền hàng loạt, chiến sự), game tự dừng và đưa 3–5 lựa chọn xử lý với hiệu ứng cụ thể. Mỗi cảnh báo có thời gian chờ để không lặp liên tục.
-- Tab **Bảng điều khiển**: báo cáo tháng mới nhất và 12 biểu đồ chuỗi thời gian (quy mô, lợi nhuận, NIM/ROE/chi phí vốn, CAR, nợ xấu, LDR, vốn ngắn hạn cho vay TDH, thanh khoản, tín dụng so với room, lãi suất, vĩ mô, cơ cấu nguồn vốn), có hover xem giá trị từng tháng, chọn 12/36 tháng hoặc toàn bộ.
+- **Bảng điều khiển cố định** ngay dưới khung pixel, không đổi khi chuyển tab: 12 biểu đồ chuỗi thời gian (quy mô, lợi nhuận, NIM/ROE/chi phí vốn, CAR, nợ xấu, LDR, vốn ngắn hạn cho vay TDH, thanh khoản, tín dụng so với room, lãi suất, vĩ mô, cơ cấu nguồn vốn), hover xem giá trị từng tháng, chọn 12/36 tháng hoặc toàn bộ. Các tab bên dưới chỉ điều hướng phần chức năng. Terminal bên phải in dòng mới nhất ở trên cùng.
 - Tab **Bảng cân đối & P&L**: ngoài bảng số, có 6 biểu đồ: cơ cấu tài sản (cột chồng), cơ cấu nguồn vốn (cột chồng), dư nợ theo phân khúc, nợ xấu theo nhóm 2–5, dự phòng đã trích so với nợ nhóm 3–5, cấu phần lợi nhuận tháng (thu nhập lãi, chi phí lãi, thu phí, chi phí hoạt động, dự phòng, lợi nhuận sau thuế).
 - Tab **Tuân thủ**: mỗi chỉ tiêu an toàn (CAR, LDR, vốn ngắn hạn cho vay TDH, dự trữ thanh khoản, nợ xấu nội bảng và gộp VAMC, tín dụng so với room) có biểu đồ riêng kèm đường giới hạn hiện hành (nét đứt), nên thấy ngay khoảng cách tới ngưỡng và xu hướng.
 - Tab **Hệ thống & vĩ mô**: biểu đồ cột so sánh 9 ngân hàng (CAR, nợ xấu, LDR, ROE, dự trữ thanh khoản, tổng tài sản; cột đổi màu khi vượt ngưỡng, vạch đỏ là giới hạn) và hai chuỗi thời gian toàn hệ thống (dư nợ và tiền gửi; LDR hệ thống, nợ xấu hệ thống, CAR thấp nhất).
@@ -59,6 +59,30 @@ Trò chơi bắt đầu tháng 10/2025 trên nền 45 tháng lịch sử vĩ mô
 - **Tỷ giá** theo dõi ở dạng tuyệt đối (VND/USD) và xu hướng %/năm; xu hướng do chênh lệch lãi suất VND–USD, lạm phát và can thiệp của NHNN quyết định.
 - **Chu kỳ nội sinh.** Bất động sản có quán tính, nóng lên khi lãi suất thực thấp và tín dụng nhanh, đổ vỡ khi NHNN thắt chặt; lạm phát đi theo tín dụng, chênh lệch sản lượng và tỷ giá; Fed đi theo chu kỳ Mỹ ~7 năm từng bước 0,25. Pha chu kỳ (Mở rộng, Quá nóng, Thắt chặt, Suy giảm, Phục hồi) được suy ra từ trạng thái và hiển thị khắp nơi.
 - **Sự kiện phát sinh từ trạng thái.** Xác suất mỗi sự kiện tính từ chu kỳ: khủng hoảng trái phiếu chỉ xảy ra khi BĐS nóng và lãi suất tăng; rút tiền hàng loạt khi có ngân hàng yếu; USD rút khi chênh lệch lãi suất âm sâu; sốt vàng khi lạm phát hoặc tỷ giá cao; nới room giữa năm khi lạm phát thấp và tín dụng chậm; Thông tư 02 khi nợ xấu tăng và tăng trưởng yếu. Chỉ các cú sốc bên ngoài (chiến sự, thương mại, thiên tai, suy thoái toàn cầu) giữ xác suất nền nhỏ, nhân theo độ khó.
+
+## Cơ cấu kỳ hạn: nguồn vốn ngắn hạn, dư nợ trung dài hạn
+
+Thực tế hệ thống ngân hàng Việt Nam có khoảng 80% nguồn vốn là ngắn hạn trong khi ~50% dư nợ là trung dài hạn (NHNN); tiền gửi kỳ hạn dưới 12 tháng chiếm 85–94% tiền gửi qua các năm. Game mô hình hóa đúng bản chất này:
+
+- **Sổ cho vay theo kỳ hạn**: mỗi ngành có tỷ trọng dư nợ trung dài hạn riêng. Ngắn hạn thu nợ 1/9 mỗi tháng (vòng quay ~9 tháng), trung dài hạn thu nợ 1/60 (bình quân 5 năm). Giải ngân mới có tỷ trọng TDH được tính để giữ cơ cấu ổn định ở tốc độ tăng trưởng thực tế của từng ngành; người chơi chỉnh bằng nút **Kỳ hạn giải ngân mới (hệ số TDH)** 0,5–1,5. Trần vốn ngắn hạn cho vay TDH chỉ chặn phần TDH của giải ngân mới, phần ngắn hạn vẫn giải ngân.
+- **Nguồn vốn theo TT22**: nguồn TDH = tiền gửi ≥12 tháng + GTCG + trái phiếu thứ cấp + 20% vay TCTD/nước ngoài + vốn tự có − TSCĐ − 30% tài sản khác (góp vốn dài hạn); nguồn ngắn hạn = CASA + tiền gửi <12 tháng + vay liên ngân hàng, tái cấp vốn + 80% vay TCTD/nước ngoài. Tỷ lệ = (dư nợ TDH − nguồn TDH) / nguồn ngắn hạn.
+- **Hiệu chỉnh theo số công bố**: tỷ trọng dư nợ TDH lấy từ BCTC và phân tích ngành, rồi giải tỷ trọng tiền gửi ≥12 tháng để tỷ lệ khởi đầu đúng bằng số công bố; nếu tiền gửi ≥12 tháng đã ở mức tối thiểu 3% mà tỷ lệ vẫn thấp thì nâng tỷ trọng dư nợ TDH. Kết quả: tiền gửi ngắn hạn 85–97% tổng tiền gửi ở mọi ngân hàng.
+
+| Ngân hàng | Tỷ lệ vốn NH cho vay TDH (công bố) | Dư nợ TDH / tổng dư nợ (game) | Tiền gửi <12 tháng (game) |
+|---|---|---|---|
+| VCB | ~9% (dưới 10%, nhóm thấp nhất) | 40% | 85% |
+| BIDV | 22% | 44% | 97% |
+| CTG | 26% | 48% | 97% |
+| Agribank | 25% | 43% | 93% |
+| TCB | 26,5% (Q4/2024; 24,6% cuối 2025) | 70% | 97% |
+| MB | ~28% (gần trần Q1/2026) | 61% | 97% |
+| VPB | 27,3% (2024; 27,5% cuối 2025) | 68% | 97% |
+| ACB | 20,7% (Q3/2024; 21,8% Q3/2025) | 54% | 97% |
+| STB | ~23% (2024; 26,2% cuối 2025) | 46% | 94% |
+
+Nhóm NHTM Nhà nước 23,6%, toàn hệ thống 28,3% (4/2024). Trần 30% từ 1/10/2023; **Thông tư 25/2026 nâng lên 40% từ 1/7/2026**: ở chế độ ngân hàng, sự kiện này xảy ra đúng tháng 7/2026; ở chế độ NHNN, tháng 6/2026 bạn được hỏi có nâng trần hay không. Ngân hàng máy giữ tỷ lệ quanh hồ sơ đã công bố (±4–5 điểm) thay vì đua lên trần.
+
+Nguồn: [thitruongtaichinhtiente.vn (trần 30% từ 1/10/2023)](https://thitruongtaichinhtiente.vn/ty-le-von-ngan-han-cho-vay-trung-va-dai-han-doi-voi-ngan-hang-giam-xuong-30-tu-ngay-1-10-2023-50362.html), [cafef (nhóm NHTMCP và toàn hệ thống 4/2024)](https://cafef.vn/ty-le-von-ngan-han-cho-vay-trung-dai-han-tai-nhom-ngan-hang-co-phan-bat-ngo-tang-manh-vuot-xa-muc-tran-quy-dinh-188231006122433531.chn), [Techcombank KQKD 6T/2025](https://techcombank.com/content/dam/techcombank/public-site/documents/techcombank-kqkd-6-thang-2025.pdf), [cafef ACB Q3/2025](https://cafef.vn/acb-quy-iii-2025-duy-tri-tang-truong-on-dinh-no-xau-thuoc-nhom-thap-nhat-nganh-188251022215507873.chn), [danviet (VCB, BIDV, TCB, Agribank, CTG)](https://danviet.vn/noi-long-ty-le-von-ngan-han-cho-vay-dai-han-vietcombank-bidv-techcombank-ai-loi-nhat-d1437719.html), [vnfinance (STB, VPB cuối 2025)](https://vnfinance.vn/ty-le-von-ngan-han-cho-vay-trung-dai-han-tai-cac-ngan-hang-hien-ra-sao-49539.html), [stockbiz (dư nợ TDH Big4 giữa 2024)](https://stockbiz.vn/tin-tuc/bidv-va-vpbank-dan-dau-cho-vay-trung-dai-han-nam-2024/27822408), [tapchinganhang.gov.vn (cơ cấu tiền gửi theo kỳ hạn)](https://tapchinganhang.gov.vn/tang-truong-huy-dong-von-tu-tien-gui-khach-hang-tai-ngan-hang-thuong-mai-viet-nam-12136.html), [vnba.org.vn (80% nguồn vốn ngắn hạn, 50% dư nợ TDH)](https://vnba.org.vn/vi/ngan-hang-chiu-ap-luc-cung-ung-von-trung--dai-han-20111.htm), [thuvienphapluat (Thông tư 25/2026)](https://thuvienphapluat.vn/chinh-sach-phap-luat-moi/vn/ho-tro-phap-luat/chinh-sach-moi/115508/thong-tu-25-2026-noi-ty-le-von-ngan-han-cho-vay-trung-han-va-dai-han-len-40-tu-1-7-2026).
 
 ## Khung pháp lý được mô phỏng
 
