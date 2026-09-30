@@ -178,7 +178,7 @@ canvas#hud{position:absolute;left:0;top:0;width:100%;aspect-ratio:480/140;height
 .card h3{font-size:15px;margin-bottom:6px}
 .card .meta{font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:8px}
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:20;padding:16px}
-.modal{background:var(--panel);border:1px solid var(--line);border-radius:10px;max-width:560px;width:100%;padding:18px;max-height:90vh;overflow:auto}
+.modal{background:var(--panel);border:1px solid var(--line);border-radius:10px;max-width:720px;width:100%;padding:18px;max-height:90vh;overflow:auto}
 .modal h3{font-size:18px;margin-bottom:8px}
 .modal .choices{display:flex;flex-direction:column;gap:8px;margin-top:12px}
 .modal .choices .btn{text-align:left}
@@ -1429,11 +1429,10 @@ function stepMonth() {
   updateTop();
   renderPane();
   const evId = W.pendingEvent ? W.pendingEvent.id : null;
+  if (B && B.dead) W.pendingEvent = null; // đã bị kiểm soát đặc biệt: không hỏi thêm sự kiện
   if (W.pendingEvent) { if (W.pendingEvent.choice) { Clock.playing = false; setPlayBtn(); } showEvent(); }
-  queueDecisions(evId);
-  if (!(W.pendingEvent && W.pendingEvent.choice)) showDecision();
-  else if (B && W.month === 60 && !W.shownEnd) { W.shownEnd = true; Clock.playing = false; setPlayBtn(); const g = B.score >= 60 ? 'Xuất sắc' : B.score >= 30 ? 'Tốt' : B.score >= 0 ? 'Trung bình' : 'Kém'; showModal('Kết thúc nhiệm kỳ 5 năm', `${B.name} sau 60 tháng: tổng tài sản ${fmt0(B.totalAssets())} tỷ, CAR ${pp(B.car(), 1)}, nợ xấu ${pp(B.nplRatio() * 100, 1)}, ROE năm cuối ${pp(B.roeLast ?? 0, 1)}. Điểm CEO ${B.score} → xếp loại ${g}. Bạn có thể tiếp tục nhiệm kỳ hai.`, [{ label: 'Tiếp tục', apply: () => {} }, { label: 'Ván mới', apply: () => { W = null; renderStart(); } }]); }
-  else if (B && B.dead && !B.shownDead) { Clock.playing = false; setPlayBtn(); B.shownDead = true; showModal('Kiểm soát đặc biệt', `${B.name} bị NHNN đưa vào diện kiểm soát đặc biệt do ${B.deadReason}. Ván chơi kết thúc với ${B.score} điểm sau ${W.month} tháng. Bạn vẫn có thể xem lại số liệu.`, [{ label: 'Xem lại', apply: () => {} }, { label: 'Ván mới', apply: () => { W = null; renderStart(); } }]); }
+  if (B && B.dead) { W.decisions = []; if (!B.shownDead) { Clock.playing = false; setPlayBtn(); B.shownDead = true; showModal(B.deadReason.includes('Tổng giám đốc') ? 'Bị thay Tổng giám đốc' : 'Kiểm soát đặc biệt', `<b>${B.name}</b>: ${B.deadReason}. Điểm ${B.score} sau ${W.month} tháng.</p>${postMortem(B)}<p class="small muted">Bản đầy đủ ở tab Nhật ký, có nút sao chép để gửi đi phân tích.`, [{ label: 'Xem lại', apply: () => { tab = 'log'; renderGame(); } }, { label: 'Ván mới', apply: () => { W = null; renderStart(); } }]); } }
+  else { queueDecisions(evId); if (!(W.pendingEvent && W.pendingEvent.choice)) showDecision(); if (B && W.month === 60 && !W.shownEnd) { W.shownEnd = true; Clock.playing = false; setPlayBtn(); const g = B.score >= 60 ? 'Xuất sắc' : B.score >= 30 ? 'Tốt' : B.score >= 0 ? 'Trung bình' : 'Kém'; showModal('Kết thúc nhiệm kỳ 5 năm', `${B.name} sau 60 tháng: tổng tài sản ${fmt0(B.totalAssets())} tỷ, CAR ${pp(B.car(), 1)}, nợ xấu ${pp(B.nplRatio() * 100, 1)}, ROE năm cuối ${pp(B.roeLast ?? 0, 1)}. Điểm CEO ${B.score} → xếp loại ${g}. Bạn có thể tiếp tục nhiệm kỳ hai.`, [{ label: 'Tiếp tục', apply: () => {} }, { label: 'Ván mới', apply: () => { W = null; renderStart(); } }]); } }
 }
 function updateTop() {
   const isBank = W.mode === 'bank'; const B = isBank ? W.player : W.banks[selectedBank]; const S = W.sbv, M = W.macro;
@@ -2017,9 +2016,26 @@ function systemPane() {
     <div class="panel"><h2>Vĩ mô</h2>${macroTable()}</div>
   </div>`;
 }
+function postMortem(B) {
+  const h = B.hist; const pick = k => h.length > k ? h[h.length - 1 - k] : null; const cols = [12, 6, 3, 1, 0].map(k => ({ k, x: pick(k) })).filter(c => c.x);
+  const row = (name, f, fmt) => `<tr><td>${name}</td>${cols.map(c => `<td class="r">${fmt(f(c.x))}</td>`).join('')}</tr>`;
+  const table = `<div class="tw"><table><tr><th>Chỉ tiêu</th>${cols.map(c => `<th class="r">${c.k === 0 ? 'Tháng cuối' : c.k + ' tháng trước'}</th>`).join('')}</tr>
+    ${row('CAR', x => x.car, v => pp(v, 1))}${row('Nợ xấu', x => x.npl, v => pp(v, 1))}${row('Dự trữ thanh khoản', x => x.liq, v => pp(v, 1))}${row('Vay liên NH + NHNN (tỷ)', x => x.ib, v => fmt0(v))}${row('LDR', x => x.ldr, v => pp(v, 0))}${row('LN tháng (tỷ)', x => x.net, v => fmt0(v))}${row('Tiền gửi (tỷ)', x => x.dep.casa + x.dep.lt6 + x.dep.m6_12 + x.dep.gt12, v => fmt0(v))}</table></div>`;
+  const warns = B.log.filter(l => l.m >= W.month - 15 && (l.cls === 'bad' || l.cls === 'warn')).slice(0, 14).reverse().map(l => `<li><span class="muted">${W.dateStr(l.m)}</span> ${l.msg}</li>`).join('');
+  const sys = W.log.filter(l => l.m >= W.month - 15 && /^Sự kiện|kiểm soát|tăng lãi suất|đóng băng/.test(l.msg)).slice(0, 8).reverse().map(l => `<li><span class="muted">${W.dateStr(l.m)}</span> ${l.msg}</li>`).join('');
+  const why = B.deadReason.includes('thanh toán') ? 'Hai tháng liên tiếp tiền mặt âm: không đủ dự trữ bắt buộc và đệm, hạn mức vay liên ngân hàng (giảm theo sức khỏe: CAR thấp, nợ xấu cao, thanh khoản mỏng, uy tín giảm) và TPCP thế chấp vay NHNN đều đã cạn.'
+    : B.deadReason.includes('âm vốn') ? 'Lỗ tích lũy (dự phòng nợ xấu, chi phí, phạt) ăn hết vốn: CAR rơi dưới 4%.'
+    : B.deadReason.includes('12 tháng') ? 'CAR dưới mức tối thiểu 12 tháng liên tục mà không tăng vốn, không phát hành trái phiếu cấp 2, không giảm tài sản rủi ro.'
+    : 'Ba năm ROE thấp hơn kỳ vọng của cổ đông hoặc Nhà nước quá 5 điểm.';
+  return `<p><b>Cơ chế:</b> ${why}</p>${table}<p><b>Cảnh báo của ngân hàng 15 tháng trước:</b></p><ul class="replist">${warns || '<li>Không có cảnh báo nào được ghi.</li>'}</ul><p><b>Bối cảnh hệ thống:</b></p><ul class="replist">${sys || '<li>Không có.</li>'}</ul>`;
+}
+function copyText(txt) { const done = () => toast('Đã sao chép.'); if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(done).catch(() => fallbackCopy(txt)); else fallbackCopy(txt); }
+function fallbackCopy(txt) { const ta = document.createElement('textarea'); ta.value = txt; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); toast('Đã sao chép.'); } catch (e) { toast('Không sao chép được, hãy bôi đen văn bản trong Nhật ký.'); } ta.remove(); }
+function logText(B) { const items = [...(B ? B.log.map(l => ({ ...l, src: B.code })) : []), ...W.log.map(l => ({ ...l, src: 'HỆ THỐNG' }))].sort((a, b) => a.m - b.m); return `BankSim ${W.mode === 'bank' ? B.code + ' ' + B.name : 'NHNN'} · độ khó ${W.diff.name} · ${W.dateStr()} (tháng ${W.month})\n` + items.map(l => `${W.dateStr(l.m)} [${l.src}] ${l.msg}`).join('\n'); }
 function logPane(B) {
   const items = [...(B ? B.log.map(l => ({ ...l, src: B.name })) : []), ...W.log.map(l => ({ ...l, src: 'Hệ thống' }))].sort((a, b) => b.m - a.m);
-  return `<div class="panel"><h2>Nhật ký</h2><div class="log">${items.length ? items.map(l => `<div><span class="t">${W.dateStr(l.m)}</span><span class="pill ${l.src === 'Hệ thống' ? 'info' : 'good'}" style="margin-right:6px">${l.src === 'Hệ thống' ? 'Hệ thống' : 'NH'}</span><span class="${l.cls || ''}">${l.msg}</span></div>`).join('') : '<div class="muted">Chưa có sự kiện. Bấm "Tháng tiếp".</div>'}</div></div>`;
+  setTimeout(() => { const b = $('#copyLog'); if (b) b.onclick = () => copyText(logText(B)); }, 0);
+  return `<div class="panel"><h2>Nhật ký <button class="btn small" id="copyLog" style="margin-left:8px">Sao chép toàn bộ nhật ký</button></h2>${B && B.dead ? `<div class="alert bad"><b>Vì sao bị ${B.deadReason.includes('Tổng giám đốc') ? 'thay Tổng giám đốc' : 'kiểm soát đặc biệt'}</b>${postMortem(B)}</div>` : ''}<div class="log">${items.length ? items.map(l => `<div><span class="t">${W.dateStr(l.m)}</span><span class="pill ${l.src === 'Hệ thống' ? 'info' : 'good'}" style="margin-right:6px">${l.src === 'Hệ thống' ? 'Hệ thống' : 'NH'}</span><span class="${l.cls || ''}">${l.msg}</span></div>`).join('') : '<div class="muted">Chưa có sự kiện. Bấm "Tháng tiếp".</div>'}</div></div>`;
 }
 function guidePane() {
   return `<div class="panel guide">
