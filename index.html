@@ -280,7 +280,7 @@ HIST.u = [2.46,2.46,2.46,2.32,2.32,2.32,2.28,2.28,2.28,2.32,2.32,2.32, 2.25,2.25
    Phillips:  Δπ = κ·gap + a_m·(tín dụng − cg*) + a_x·max(0, tỷ giá − 2) + a_e·(π* − π) + cú sốc cung
    Okun:      u → u* − β·(g − g*)
    Taylor:    i_T = r* + π + 0,5·(π − π*) + 0,4·gap + 0,3·max(0, tỷ giá − 3) (NHNN tự động ở chế độ ngân hàng; gợi ý cho Thống đốc) */
-const MAC = { gStar: 7.5, gGoal: 8.0 /* mục tiêu tăng trưởng của Chính phủ */, aG: 1.5 /* xung lực đầu tư công → GDP */, piStar: 3.5, uStar: 2.3, rStar: 1.0, cgStar: 12, lam: 0.12, aR: 0.6, aC: 0.06, kappa: 0.04, aM: 0.006, aX: 0.02, aE: 0.05, beta: 0.35, uSpeed: 0.15, gapDecay: 0.92 };
+const MAC = { gStar: 7.5, gGoal: 8.0 /* mục tiêu tăng trưởng của Chính phủ */, aG: 1.5 /* xung lực đầu tư công → GDP */, piStar: 3.5, uStar: 2.3, rStar: 1.0, lendStar: 4.0 /* lãi cho vay thực trung tính (2024–2025: cho vay ~7,5%, kỳ vọng lạm phát ~3,5%) */, cgStar: 12, lam: 0.12, aR: 0.6, aC: 0.06, kappa: 0.04, aM: 0.006, aX: 0.02, aE: 0.05, beta: 0.35, uSpeed: 0.15, gapDecay: 0.92 };
 
 /* ---------- Độ khó ----------
    ev: xác suất có sự kiện mỗi tháng; pd: hệ số nợ xấu; dep: hệ số rút tiền khi yếu; comp: cạnh tranh với ngân hàng khác;
@@ -992,13 +992,16 @@ class World {
     // Lãi suất huy động thị trường = neo chính sách + phụ trội thanh khoản + kỳ vọng lạm phát + cạnh tranh (tỷ lệ ngân hàng thiếu nguồn)
     const needy = alive.length ? alive.filter(b => b.ldr() > 83 || b.liqReserve() < 12).length / alive.length : 0;
     const infl = 0.15 * Math.max(0, M.cpi - 3.5);
-    const lt6 = Math.max(1.5, Math.min(S.depCap6m, S.refi - 0.5 + 0.3 * tight + 0.5 * infl + 0.3 * needy));
-    const m6_12 = Math.max(2.5, S.refi + 0.3 + 0.35 * tight + infl + 0.5 * needy);
-    const gt12 = Math.max(3.0, S.refi + 0.8 + 0.3 * tight + infl + 0.4 * needy); // hiệu chỉnh 2024–2025: lãi 12 tháng 4,7–5,2% khi tái cấp vốn 4,5%
+    // Neo lãi suất huy động = lãi điều hành + chênh lệch thanh khoản liên ngân hàng (OMO/tín phiếu đẩy LNH lệch khỏi mức bình thường TCV − 0,5) − định hướng giảm lãi của NHNN.
+    // Ở Việt Nam lãi điều hành tự nó ít tác dụng; NHNN điều tiết mặt bằng qua thanh khoản, trần lãi ngắn hạn và "kêu gọi" (2/2025 yêu cầu giảm lãi huy động).
+    const sua = S.suasion || 0; const anchor = S.refi + 0.6 * (ibON - (S.refi - 0.5)) - 0.35 * sua; this.anchor = anchor;
+    const lt6 = Math.max(1.5, Math.min(S.depCap6m, anchor - 0.5 + 0.3 * tight + 0.5 * infl + 0.3 * needy));
+    const m6_12 = Math.max(2.5, anchor + 0.3 + 0.35 * tight + infl + 0.5 * needy);
+    const gt12 = Math.max(3.0, anchor + 0.8 + 0.3 * tight + infl + 0.4 * needy); // hiệu chỉnh 2024–2025: lãi 12 tháng 4,7–5,2% khi tái cấp vốn 4,5%
     // Chi phí vốn thực tế của hệ thống (bình quân gia quyền các ngân hàng) → lãi cho vay = chi phí vốn + chi phí hoạt động + rủi ro + thanh khoản + biên
     const cof = this.sysCostOfFunds(gt12, ibON);
     const riskPrem = 0.35 * Math.max(0, this.sysNpl() * 100 - 1.5);
-    const lend = cof + 1.3 + riskPrem + 0.25 * Math.max(0, tight) + 2.3 + this.diff.nim; // chi phí vốn + chi phí hoạt động + rủi ro + thanh khoản + biên
+    const lend = cof + 1.3 + riskPrem + 0.25 * Math.max(0, tight) + 2.3 - 0.4 * sua + this.diff.nim; // chi phí vốn + chi phí hoạt động + rủi ro + thanh khoản + biên − phần biên ngân hàng nhường theo định hướng giảm lãi cho vay
     // Lãi suất thực tế đang áp dụng (quan sát) của hệ thống
     const sysDepR = alive.length ? sum(alive.map(b => b.deposits() * (b.dep.casa * b.pol.rCasa + b.dep.lt6 * b.pol.rLt6 + b.dep.m6_12 * b.pol.rM6_12 + b.dep.gt12 * b.pol.rGt12) / Math.max(1, b.deposits()))) / Math.max(1, sysDep) : m6_12;
     const sysLendR = alive.length ? sum(alive.map(b => SECTORS.reduce((a, sec) => a + b.sectorTotal(sec.id) * b.sectorRate(sec, { lend, priorityCap: REG.priorityCap }), 0))) / Math.max(1, sysLoan) : lend;
@@ -1110,7 +1113,7 @@ class World {
   }
   recomputeOmo() { const S = this.sbv; S.omoNet = sum(S.ops.filter(o => o.kind === 'inject').map(o => o.amt)) - sum(S.ops.filter(o => o.kind === 'absorb').map(o => o.amt)); }
   processOps() { // nghiệp vụ OMO/tín phiếu theo kỳ hạn & đảo hạn, forward USD đáo hạn
-    const S = this.sbv, M = this.macro; if (typeof SBV !== 'undefined') SBV.autoFx(); S.fxSell = S.fxSpot || 0; S.fxSpot = 0;
+    const S = this.sbv, M = this.macro; if (typeof SBV !== 'undefined') SBV.autoFx(); S.fxSell = S.fxSpot || 0; S.fxSpot = 0; this.suasionStep(false);
     for (const op of S.ops) {
       if (op.kind === 'fwd') { M.fx -= op.amt * 0.08; op.left -= 1;
         if (op.left <= 0) { const cancel = M.fx < (op.prem ?? 0.5) * 2.5 ? 0.5 : 0; const settle = op.amt * (1 - cancel); M.reserves -= settle; S.fxSell += settle * 25000; op.done = true;
@@ -1119,6 +1122,15 @@ class World {
       else { op.left -= 30; while (op.left <= 0 && op.amt >= 1) { op.amt *= op.roll; op.left += op.tenor; } if (op.amt < 1) { op.done = true; this.addLog(`${op.kind === 'inject' ? 'OMO bơm' : 'Tín phiếu'} kỳ hạn ${op.tenor} ngày đã tất toán hết.`, ''); } }
     }
     S.ops = S.ops.filter(o => !o.done); this.recomputeOmo(); if (typeof SBV !== 'undefined') SBV.autoLiq();
+  }
+  suasionStep(auto) { // định hướng giảm lãi cho vay: NHNN kêu gọi giảm lãi huy động/cho vay, bơm thanh khoản giữ LNH thấp, hạ trần lãi ngắn hạn khi GDP dưới mục tiêu và lạm phát, tỷ giá còn dư địa
+    const M = this.macro, S = this.sbv; const was = S.suasion || 0; const room = M.cpi < 4.5 && M.fx < 3 && (this.sysLolr || 0) / Math.max(1, this.sysDeposits()) < 0.003;
+    const want = auto ? (M.gdp < MAC.gGoal && room) : (S.lendDir === 'down' && room);
+    S.suasion = clamp(want ? was + 0.15 : was - 0.2, 0, 1);
+    if (S.suasion >= 0.3 && was < 0.3) this.act('NHNN', `NHNN kêu gọi các ngân hàng giảm lãi suất huy động và cho vay để hỗ trợ tăng trưởng; bơm thanh khoản giữ lãi liên ngân hàng thấp (mặt bằng cho vay dự kiến giảm ~${pp(0.4 * 0.5, 1)}–${pp(0.4, 1)}).`, 'good', auto ? `Quy tắc: GDP ${pp(M.gdp, 1)} dưới mục tiêu ${pp(MAC.gGoal, 0)}, CPI ${pp(M.cpi, 1)} < 4,5 và VND mất giá ${pp(M.fx, 1)} < 3%: NHNN dùng định hướng và thanh khoản thay vì lãi điều hành (như 2/2025)` : 'Theo định hướng giảm lãi cho vay bạn chọn');
+    if (S.suasion >= 0.6 && was < 0.6 && S.depCap6m > 4.0) { S.depCap6m = +(S.depCap6m - 0.25).toFixed(2); this.act('NHNN', `NHNN hạ trần lãi suất huy động dưới 6 tháng xuống ${pp(S.depCap6m)} để kéo mặt bằng cho vay.`, 'good', 'Định hướng giảm lãi cho vay đã kéo dài; trần lãi ngắn hạn là công cụ hành chính có tác dụng ngay'); }
+    if (S.suasion < 0.3 && was >= 0.3) this.act('NHNN', 'NHNN ngừng định hướng giảm lãi: lạm phát hoặc tỷ giá không còn dư địa.', 'warn', `CPI ${pp(M.cpi, 1)}, VND mất giá ${pp(M.fx, 1)}/năm`);
+    if (S.suasion >= 0.3 && this.tightness > -0.3) S.omoNet += this.sysDeposits() * 0.004 * S.suasion; // bơm OMO giữ liên ngân hàng thấp để lãi huy động hạ theo
   }
   /* --- NHNN tự động (ở chế độ chơi ngân hàng) --- */
   sbvAuto() {
@@ -1131,6 +1143,7 @@ class World {
       if ((gapT >= hikeT && M.cpi > (lolrP > 0.3 ? 4.0 : 4.3)) || (M.fx > 5 && M.reserves < 70) || this.fxHigh >= 3) { const d = gapT >= 1.5 || M.cpi > 6 ? 1.0 : 0.5; /* 2024–2025: NHNN giữ 4,5% dù tỷ giá căng, dùng tín phiếu thay vì tăng lãi điều hành */ S.refi += d; S.omo += d; S.disc += d; S.bill += d; S.depCap6m = Math.min(7, S.depCap6m + d); this.lastPolicyMove = this.month; this.announce = 'hike'; this.act('NHNN', `NHNN tăng lãi suất điều hành ${d.toFixed(1).replace('.', ',')} điểm % ${this.fxHigh >= 3 && !(gapT >= hikeT && M.cpi > 4.3) ? 'để bảo vệ tỷ giá' : 'theo quy tắc Taylor'} (mức gợi ý ${pp(M.taylor)}, CPI ${pp(M.cpi, 1)}, khoảng cách sản lượng ${M.gap.toFixed(1).replace('.', ',')}, tỷ giá +${pp(M.fx, 1)}${lolrP > 0.3 ? `, tái cấp vốn đặc biệt ${pp(lolrP, 1)} tiền gửi` : ''}).`, 'warn', this.fxHigh >= 3 && !(gapT >= hikeT && M.cpi > 4.3) ? `Quy tắc: VND mất giá trên 3,5%/năm ${this.fxHigh} tháng liên tiếp → tăng lãi bảo vệ tỷ giá (như 10/2022); 3 tháng chưa đổi lãi` : `Quy tắc: khoảng cách Taylor ${gapT.toFixed(2).replace('.', ',')} ≥ ${hikeT.toString().replace('.', ',')} và CPI ${pp(M.cpi, 1)} > ${lolrP > 0.3 ? '4,0' : '4,3'}%${lolrP > 0.3 ? ' (đang tái cấp vốn đặc biệt: tiền bơm ra gây áp lực giá, phải hút lại và xử lý tài sản)' : ''}, hoặc VND mất giá > 5% khi dự trữ < 70 tỷ USD; 3 tháng chưa đổi lãi`); if (M.cpi > 5) { S.sysRoom = Math.max(6, S.sysRoom - 2); for (const b of this.banks) b.room = Math.max(0, b.room - 2); this.act('NHNN', 'NHNN siết room tín dụng 2 điểm % để chống lạm phát.', 'warn', `CPI ${pp(M.cpi, 1)} > 5%`); } }
       else if (gapT <= -0.5 && M.fx < 2.0 && M.fedRate <= S.refi + 0.5 && S.refi > 2 && lolrP < 0.3) { /* không cắt khi Fed còn cao hơn nhiều: giữ chênh lệch lãi suất bảo vệ tỷ giá (2024) */ S.refi -= 0.5; S.omo -= 0.5; S.disc -= 0.5; S.bill -= 0.5; S.depCap6m = Math.max(3.5, S.depCap6m - 0.5); this.lastPolicyMove = this.month; this.announce = 'cut'; this.act('NHNN', `NHNN giảm lãi suất điều hành 0,5 điểm % theo quy tắc Taylor (mức gợi ý ${pp(M.taylor)}, thất nghiệp ${pp(M.u, 1)}, khoảng cách sản lượng ${M.gap.toFixed(1).replace('.', ',')}).`, 'good', `Quy tắc: Taylor ${pp(M.taylor)} thấp hơn TCV ${pp(S.refi)} từ 0,5 điểm, VND mất giá ${pp(M.fx, 1)} < 2%, Fed ${pp(M.fedRate)} không cao hơn TCV quá 0,5; 3 tháng chưa đổi lãi`); }
     }
+    this.suasionStep(true);
     if (M.gdp < MAC.gGoal - 1.5 && M.cpi < 4 && M.fx < 3 && S.refi > 2.5 && this.month - this.lastPolicyMove >= 6) { /* thực tế 2024–2025 NHNN giữ 4,5% dù GDP dưới 8; chỉ cắt khi tăng trưởng thật sự yếu */ S.refi -= 0.25; S.omo -= 0.25; S.disc -= 0.25; S.bill -= 0.25; this.lastPolicyMove = this.month; this.announce = 'cut'; this.act('NHNN', `NHNN giảm lãi suất điều hành 0,25 điểm % theo yêu cầu thúc đẩy tăng trưởng (GDP ${pp(M.gdp, 1)} dưới mục tiêu ${pp(MAC.gGoal, 0)}, CPI ${pp(M.cpi, 1)} còn dư địa).`, 'good', `Quy tắc: GDP ${pp(M.gdp, 1)} < 6,5% và CPI < 4%, VND mất giá < 3%, 6 tháng chưa đổi lãi`); }
     // Xin nới room: ngân hàng dùng ≥75% room từ giữa năm có thể xin thêm; NHNN cấp tùy ý chí (lạm phát, tỷ giá) và sức khỏe, ưu tiên ngân hàng lớn
     if (S.roomOn && this.monthOfYear >= 5 && this.monthOfYear <= 11) { const willing = M.cpi < 4.5 && M.fx < 4 ? (M.gdp < MAC.gGoal ? 0.6 : 0.35) : 0.1;
@@ -1153,12 +1166,13 @@ class World {
     const noise = () => rnd(-0.08, 0.08) * sq;
     // Kỳ vọng lạm phát thích nghi, lãi suất thực, khoảng cách sản lượng
     M.pie += 0.15 * dt * (M.cpi - M.pie);
-    M.real = S.refi - M.pie;
+    M.real = S.refi - M.pie; // lãi điều hành thực (chỉ để tham chiếu Taylor)
+    M.realLend = (this.market.lend ?? S.refi + 3) - M.pie; // lãi cho vay thực với khoản vay mới (mặt bằng thị trường): đây mới là thứ doanh nghiệp và hộ gia đình cảm nhận
     M.gap = Math.pow(MAC.gapDecay, dt) * M.gap + (M.gdp - MAC.gStar) / 12 * dt;
     // IS: tăng trưởng hướng về tiềm năng trừ tác động lãi suất thực, cộng xung lực tín dụng, trừ thắt chặt toàn cầu
     const wc = this.scripted ? 0 : Math.sin(2 * Math.PI * (this.cyc ? this.cyc.t / this.cyc.period : 0)); this.worldCycle = wc; // backtest: thế giới do kịch bản sự kiện thật thay cho sóng tổng hợp // +1 thế giới tăng trưởng, vốn vào; −1 suy giảm, rút vốn
     const nplSys = this.sysNpl() * 100; const lolr = this.sysLolr ? this.sysLolr / Math.max(1, this.sysDeposits()) * 100 : 0; // tái cấp vốn đặc biệt đang treo (% tiền gửi)
-    const gTarget = MAC.gStar - MAC.aR * (M.real - MAC.rStar) + MAC.aC * (cg - MAC.cgStar) - 0.1 * Math.max(0, M.fedRate - 4) + MAC.aG * (this.fiscal ? this.fiscal.impulse : 0) + this.shock('gdp')
+    const gTarget = MAC.gStar - MAC.aR * (M.realLend - MAC.lendStar) + MAC.aC * (cg - MAC.cgStar) - 0.1 * Math.max(0, M.fedRate - 4) + MAC.aG * (this.fiscal ? this.fiscal.impulse : 0) + this.shock('gdp')
       + 1.5 * wc + 0.8 * (M.re - 1) - 0.4 * Math.max(0, nplSys - 2.5); // chu kỳ thế giới; BĐS nóng kéo xây dựng, tiêu dùng; nợ xấu cao làm tín dụng và đầu tư co lại
     M.gdp += MAC.lam * dt * (gTarget - M.gdp) + noise();
     // Phillips: lạm phát theo khoảng cách sản lượng, tiền tệ, tỷ giá, neo kỳ vọng và cú sốc cung
@@ -2118,6 +2132,7 @@ function sbvPane() {
     <div class="panel"><h2>Can thiệp tỷ giá</h2>
       <p class="small muted">Chọn cách can thiệp, lượng do engine tính theo mức VND mất giá vượt 2,5%/năm. Giao ngay: bán USD từ dự trữ, hút VND ngay, tỷ giá hạ ngay (tối đa 10 tỷ USD hoặc 8% dự trữ mỗi tháng). Kỳ hạn 3 tháng: hạ nhiệt kỳ vọng mà chưa tốn dự trữ, đến hạn mới giao USD, ngân hàng được hủy một nửa nếu VND đã ổn định. Dự trữ <b>${fmt1(M.reserves)}</b> tỷ USD · VND mất giá ${pp(M.fx, 1)}/năm · USD/VND ${fmt0(M.usd)}.</p>
       ${pol('band', 'Biên độ tỷ giá quanh tỷ giá trung tâm', 1, 2, 8, '±' + (S.band ?? 3) + '%', 'Vượt biên độ thì NHNN tự bán USD giữ tỷ giá (tốn dự trữ), chỉ khi dự trữ > 45 tỷ USD')}
+      <div class="arow"><div class="al"><span class="lbl">Định hướng lãi cho vay</span><span class="hint">${(S.lendDir || 'none') === 'down' ? `Đang kêu gọi giảm lãi (mức ${Math.round((S.suasion || 0) * 100)}%): mặt bằng cho vay −${pp(0.4 * (S.suasion || 0), 1)}, huy động −${pp(0.35 * (S.suasion || 0), 1)}` : 'Không định hướng; lãi điều hành tự nó ít tác dụng, NHNN kéo mặt bằng qua thanh khoản và kêu gọi'}</span></div>${seg('lendDir', ['none', 'down'], S.lendDir || 'none', o => o === 'none' ? 'Để thị trường' : 'Kêu gọi giảm lãi')}</div>
       <div class="arow"><div class="al"><span class="lbl">Cách can thiệp</span><span class="hint">${fs === 'none' ? 'Không can thiệp' : fs === 'spot' ? 'Bán giao ngay khi cần' : 'Bán kỳ hạn khi cần'}</span></div>${seg('fxs', ['none', 'spot', 'fwd'], fs, o => o === 'none' ? 'Không can thiệp' : o === 'spot' ? 'Bán giao ngay' : 'Bán kỳ hạn 3 tháng')}</div>
       <p class="small">${fs === 'none' ? 'Thị trường tự điều chỉnh; dự trữ chỉ đổi theo cán cân thanh toán.' : fxPlan >= 0.5 ? `Tháng tới dự kiến bán <b>${fmt1(fxPlan)}</b> tỷ USD ${fs === 'spot' ? 'giao ngay' : 'kỳ hạn'}.` : 'VND đang trong vùng an toàn, tháng tới không bán.'}</p>
     </div>
@@ -2147,7 +2162,7 @@ function bindSbv(root) {
   pane.querySelectorAll('[data-act]').forEach(btn => btn.onclick = () => {
     const a = btn.dataset.act, arg = JSON.parse(btn.dataset.arg || 'null'); if (a !== 'stop') W.act('Bạn', actLabel(btn) + (a === 'weak' ? ' (' + (W.banks[+$('#weakBank').value] || {}).code + ')' : ''), '', ctxWhy(null));
     if (a === 'rateDir') SBV.rateDir(arg); else if (a === 'set') SBV.set(...arg); else if (a === 'toggle') SBV.toggle(arg[0], arg[1]);
-    else if (a === 'stance') SBV.stance(arg); else if (a === 'fxs') SBV.fxStance(arg); else if (a === 'stop') SBV.stopRoll(arg);
+    else if (a === 'stance') SBV.stance(arg); else if (a === 'lendDir') { W.sbv.lendDir = arg; renderTools(); } else if (a === 'fxs') SBV.fxStance(arg); else if (a === 'stop') SBV.stopRoll(arg);
     else if (a === 'weak') SBV.weak(arg, +$('#weakBank').value);
     renderPane(); updateTop();
   });
