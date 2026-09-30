@@ -1814,8 +1814,8 @@ function endGame() { // ván kết thúc sau 5 năm (60 tháng): chấm điểm,
   W.shownEnd = true; W.ended = true; Clock.playing = false; setPlayBtn(); W.decisions = []; W.pendingEvent = null;
   const B = W.player;
   const yrs = Math.max(1, Math.round(W.month / 12)); const sc60 = B ? B.score * 60 / Math.max(12, W.month) : 0; // điểm CEO quy về thang 5 năm để xếp loại
-  if (B) { const g = sc60 >= 60 ? 'Xuất sắc' : sc60 >= 30 ? 'Tốt' : sc60 >= 0 ? 'Trung bình' : 'Kém'; showModal(`Kết thúc nhiệm kỳ ${yrs} năm`, `<b>${B.name}</b> sau ${W.month} tháng: tổng tài sản ${fmt0(B.totalAssets())} tỷ, CAR ${pp(B.car(), 1)}, nợ xấu ${pp(B.nplRatio() * 100, 1)}, ROE năm cuối ${pp(B.roeLast ?? 0, 1)}. Điểm CEO ${B.score} → xếp loại <b>${g}</b>.</p>${postMortem(B)}<p class="small muted">Ván đã kết thúc; bạn vẫn xem được mọi tab, hoặc nới thời gian ở ô "Thời gian" để chơi tiếp. Bản đầy đủ ở tab Nhật ký, có nút sao chép.`, [{ label: 'Xem lại', apply: () => { tab = 'log'; renderGame(); } }, { label: 'Ván mới', apply: () => { W = null; renderStart(); } }]); }
-  else { const sc = W.sbvScore(); const M = W.macro; const g = sc >= 8 ? 'Xuất sắc' : sc >= 4 ? 'Tốt' : sc >= 0 ? 'Trung bình' : 'Kém'; showModal(`Kết thúc nhiệm kỳ Thống đốc ${yrs} năm`, `Sau ${W.month} tháng: CPI ${pp(M.cpi, 1)}, GDP ${pp(M.gdp, 1)}, USD/VND ${fmt0(M.usd)} (${ytdFx(M)}), dự trữ ${fmt1(M.reserves)} tỷ USD, nợ xấu hệ thống ${pp(W.sysNpl() * 100, 1)}, ngân hàng bị kiểm soát đặc biệt: ${W.banks.filter(b => b.dead).length}. Điểm Thống đốc ${sc} → xếp loại <b>${g}</b>.<p class="small muted">Ván đã kết thúc; bạn vẫn xem được mọi tab và dòng thời gian, hoặc nới thời gian ở ô "Thời gian" để chơi tiếp.`, [{ label: 'Xem lại', apply: () => { tab = 'timeline'; renderGame(); } }, { label: 'Ván mới', apply: () => { W = null; renderStart(); } }]); }
+  if (B) { const g = sc60 >= 60 ? 'Xuất sắc' : sc60 >= 30 ? 'Tốt' : sc60 >= 0 ? 'Trung bình' : 'Kém'; showModal(`Kết thúc nhiệm kỳ ${yrs} năm`, `<b>${B.name}</b> sau ${W.month} tháng: tổng tài sản ${fmt0(B.totalAssets())} tỷ, CAR ${pp(B.car(), 1)}, nợ xấu ${pp(B.nplRatio() * 100, 1)}, ROE năm cuối ${pp(B.roeLast ?? 0, 1)}. Điểm CEO ${B.score} → xếp loại <b>${g}</b>.</p>${postMortem(B)}<p class="small muted">Ván đã kết thúc; bạn vẫn xem được mọi tab, hoặc nới thời gian ở ô "Thời gian" để chơi tiếp. Bản đầy đủ ở tab Nhật ký, có nút sao chép.`, [{ label: 'Đọc biên niên', apply: () => { tab = 'chronicle'; renderGame(); } }, { label: 'Xem lại', apply: () => { tab = 'log'; renderGame(); } }, { label: 'Ván mới', apply: () => { W = null; renderStart(); } }]); }
+  else { const sc = W.sbvScore(); const M = W.macro; const g = sc >= 8 ? 'Xuất sắc' : sc >= 4 ? 'Tốt' : sc >= 0 ? 'Trung bình' : 'Kém'; showModal(`Kết thúc nhiệm kỳ Thống đốc ${yrs} năm`, `Sau ${W.month} tháng: CPI ${pp(M.cpi, 1)}, GDP ${pp(M.gdp, 1)}, USD/VND ${fmt0(M.usd)} (${ytdFx(M)}), dự trữ ${fmt1(M.reserves)} tỷ USD, nợ xấu hệ thống ${pp(W.sysNpl() * 100, 1)}, ngân hàng bị kiểm soát đặc biệt: ${W.banks.filter(b => b.dead).length}. Điểm Thống đốc ${sc} → xếp loại <b>${g}</b>.<p class="small muted">Ván đã kết thúc; bạn vẫn xem được mọi tab và dòng thời gian, hoặc nới thời gian ở ô "Thời gian" để chơi tiếp.`, [{ label: 'Đọc biên niên', apply: () => { tab = 'chronicle'; renderGame(); } }, { label: 'Xem lại', apply: () => { tab = 'timeline'; renderGame(); } }, { label: 'Ván mới', apply: () => { W = null; renderStart(); } }]); }
 }
 function stepWeek() { // một tuần: kinh tế chảy 1/4 tháng, sự kiện có thể xảy ra, cảnh chạy tiếp; hết 4 tuần thì khóa sổ tháng
   if (W.ended) { Clock.playing = false; setPlayBtn(); return; }
@@ -1825,7 +1825,7 @@ function stepWeek() { // một tuần: kinh tế chảy 1/4 tháng, sự kiện 
   const B = W.player;
   if (B) termPush(W.month, `tuần ${W.week}: LN lũy kế ${fmt0(B.lastPnl.net)} tỷ · giải ngân ${fmt0(B.lastDisb || 0)} · tiền gửi ${fmt0(B.deposits())} · LDR ${pp(B.ldr(), 1)} · thanh khoản ${pp(B.liqReserve(), 1)} · LNH ${pp(W.market.ibON)} · USD ${fmt0(W.macro.usd)}`, 'dim', '');
   else termPush(W.month, `tuần ${W.week}: CPI ${pp(W.macro.cpi, 2)} · GDP ${pp(W.macro.gdp, 2)} · USD/VND ${fmt0(W.macro.usd)} · dự trữ ${fmt1(W.macro.reserves)} tỷ USD · LNH ${pp(W.market.ibON)} · dư nợ ${fmt0(W.sysLoans())}`, 'dim', '');
-  { const n = W.weekNarrative(); if (n) termPush(W.month, n, '', 'DIỄN GIẢI'); }
+  { const n = W.weekNarrative(); if (n) { termPush(W.month, n, '', 'DIỄN GIẢI'); (W.narr = W.narr || []).push({ m: W.month, w: W.week, t: n }); } }
   updateTop(); renderTools(); drawCharts(W.mode === 'bank' ? W.player : W.banks[selectedBank]);
   if (W.player && W.player.dead) W.pendingEvent = null;
   if (W.pendingEvent) { if (Auto.on && W.pendingEvent.choice) { const ev = W.pendingEvent; const c = ev.choices[0]; c.apply(W); W.act('Tự động', `Tự động: ${ev.title} → ${c.label}`, 'warn', typeof ev.text === 'function' ? ev.text(W) : ev.text); ev.autoPicked = c.label; ev.choice = false; ev._choices = ev.choices; }
@@ -1836,7 +1836,7 @@ function stepMonth() { // tháng vừa khóa sổ: báo cáo, quyết định, s
   const B = W.player;
   if (B) termPush(W.month, `── ${W.dateStr()} · LN ${fmt0(B.lastPnl.net)} tỷ · CAR ${pp(B.car(), 1)} · LDR ${pp(B.ldr(), 0)} · NPL ${pp(B.nplRatio() * 100, 1)} · giải ngân ${fmt0(B.lastDisb || 0)}${B.binds && B.binds.length ? ' (chặn bởi ' + B.binds.join(', ') + ')' : ''}`, 'dim', '');
   else termPush(W.month, `── ${W.dateStr()} · ${W.cyclePhase().name} · CPI ${pp(W.macro.cpi, 1)} · GDP ${pp(W.macro.gdp, 1)} · USD/VND ${fmt0(W.macro.usd)} · tín dụng ${pp(W.sysCreditGrowthAnn, 1)} · NPL ${pp(W.sysNpl() * 100, 1)} · LNH ${pp(W.market.ibON)}`, 'dim', '');
-  { const n = W.weekNarrative(); if (n) termPush(W.month, `tuần 4: ${n}`, '', 'DIỄN GIẢI'); }
+  { const n = W.weekNarrative(); if (n) { termPush(W.month, `tuần 4: ${n}`, '', 'DIỄN GIẢI'); (W.narr = W.narr || []).push({ m: W.month, w: 4, t: n }); } }
   const rep = buildReport(); W.reports = W.reports || []; W.reports.push(rep); if (W.reports.length > 240) W.reports.shift();
   termPush(W.month, `BÁO CÁO ${W.dateStr()}`, 'info', 'BÁO CÁO'); for (const l of rep.lines) termPush(W.month, l, l.startsWith('Vi phạm') ? 'bad' : l.startsWith('Khuyến nghị') ? 'good' : '', '');
   Scene.onMonth();
@@ -1883,8 +1883,8 @@ function updateTop() {
 function renderTabs() {
   const isBank = W.mode === 'bank';
   const tabs = isBank
-    ? [['overview', 'Tổng quan'], ['timeline', 'Dòng thời gian'], ['report', 'Báo cáo tháng'], ['balance', 'Bảng cân đối & P&L'], ['comply', 'Tuân thủ'], ['system', 'Hệ thống & vĩ mô'], ['log', 'Nhật ký'], ['guide', 'Hướng dẫn']]
-    : [['overview', 'Tổng quan vĩ mô'], ['timeline', 'Dòng thời gian'], ['report', 'Báo cáo tháng'], ['system', 'Các ngân hàng'], ['balance', 'Chi tiết ngân hàng'], ['comply', 'Tuân thủ NH'], ['log', 'Nhật ký'], ['guide', 'Hướng dẫn']];
+    ? [['overview', 'Tổng quan'], ['timeline', 'Dòng thời gian'], ['chronicle', 'Biên niên'], ['report', 'Báo cáo tháng'], ['balance', 'Bảng cân đối & P&L'], ['comply', 'Tuân thủ'], ['system', 'Hệ thống & vĩ mô'], ['log', 'Nhật ký'], ['guide', 'Hướng dẫn']]
+    : [['overview', 'Tổng quan vĩ mô'], ['timeline', 'Dòng thời gian'], ['chronicle', 'Biên niên'], ['report', 'Báo cáo tháng'], ['system', 'Các ngân hàng'], ['balance', 'Chi tiết ngân hàng'], ['comply', 'Tuân thủ NH'], ['log', 'Nhật ký'], ['guide', 'Hướng dẫn']];
   $('#tabs').innerHTML = tabs.map(t => `<button class="tab ${tab === t[0] ? 'active' : ''}" data-tab="${t[0]}">${t[1]}</button>`).join('');
   $('#tabs').querySelectorAll('.tab').forEach(t => t.onclick = () => { tab = t.dataset.tab; renderTabs(); renderPane(); });
 }
@@ -1906,6 +1906,7 @@ function renderPane() {
     case 'system': pane.innerHTML = systemPane(); break;
     case 'log': pane.innerHTML = logPane(B); break;
     case 'timeline': pane.innerHTML = timelinePane(); break;
+    case 'chronicle': pane.innerHTML = chroniclePane(); break;
     case 'guide': pane.innerHTML = guidePane(); break;
   }
   pane.querySelectorAll('[data-pick]').forEach(el => el.onclick = () => { selectedBank = +el.dataset.pick; tab = 'balance'; renderGame(); });
@@ -2577,6 +2578,58 @@ function logPane(B) {
 const LANES = [['Bạn', '--s1'], ['Tự động', '--s6'], ['Quyết định', '--s3'], ['Sự kiện', '--s4'], ['NHNN', '--s2']];
 function actWhen(a) { return W.dateStr(a.m) + (a.w ? ' tuần ' + a.w : ''); }
 function actionsText() { return `Hành động · BankSim ${W.mode === 'bank' ? W.player.code : 'NHNN'} · ${W.weekStr()}\n` + (W.actions || []).map(a => `${actWhen(a)} [${a.who}] ${a.text}${a.why ? '\n    Vì: ' + a.why : ''}`).join('\n'); }
+function chronicleData() { // biên niên cả ván: tổng quan đầu–cuối, từng năm (thanh khoản, lãi suất, tỷ giá, tín dụng, pha, hành động các bên, diễn giải tiêu biểu)
+  const H = W.hist.filter(h => !h.hist); if (!H.length) return null; const acts = W.actions || [], narr = W.narr || []; const B = W.player;
+  const first = H[0], last = H[H.length - 1]; const f1 = v => pp(v, 1), f2 = v => pp(v, 2);
+  const years = []; for (let i = 0; i < H.length; i += 12) years.push(H.slice(i, i + 12));
+  const stat = (rows, k) => { const v = rows.map(r => r[k]).filter(x => x != null); return v.length ? { a: sum(v) / v.length, lo: Math.min(...v), hi: Math.max(...v), s: v[0], e: v[v.length - 1] } : null; };
+  const yearBlocks = years.map((rows, yi) => { const m0 = rows[0].m, m1 = rows[rows.length - 1].m; const inY = a => a.m >= m0 && a.m <= m1;
+    const ib = stat(rows, 'ibON'), dep = stat(rows, 'depSys'), lend = stat(rows, 'lendSys'), cof = stat(rows, 'cof'), refi = stat(rows, 'refi'), bills = stat(rows, 'bills');
+    const usd = stat(rows, 'usd'), res = stat(rows, 'reserves'), cpi = stat(rows, 'cpi'), gdp = stat(rows, 'gdp'), cg = stat(rows, 'cg'), m2 = stat(rows, 'm2'), npl = stat(rows, 'npl'), fed = stat(rows, 'fed');
+    const ph = {}; rows.forEach(r => ph[r.phase] = (ph[r.phase] || 0) + 1); const phaseTxt = Object.entries(ph).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${(W.PHASES[k] || { name: k }).name} ${v} tháng`).join(', ');
+    const A = acts.filter(inY); const lane = who => A.filter(a => a.who === who);
+    const sbvA = lane('NHNN'); const sold = sum(sbvA.map(a => { const m = a.text.match(/bán ([\d,]+) tỷ USD/); return m ? +m[1].replace(',', '.') : 0; })), bought = sum(sbvA.map(a => { const m = a.text.match(/mua ([\d,]+) tỷ USD/); return m ? +m[1].replace(',', '.') : 0; }));
+    const hikes = sbvA.filter(a => /tăng lãi suất điều hành/.test(a.text)).length, cuts = sbvA.filter(a => /giảm lãi suất điều hành/.test(a.text)).length, sua = sbvA.filter(a => /kêu gọi|hạ trần/.test(a.text)).length, lolr = sbvA.filter(a => /tái cấp vốn đặc biệt/.test(a.text)).length, room = sbvA.filter(a => /nới room/.test(a.text)).length;
+    const key = narr.filter(n => n.m >= m0 && n.m <= m1 && /LNH [\d,]+% → [\d,]+% vì|lãi điều hành|tái cấp vốn đặc biệt|bán [\d,]+ tỷ USD|mua [\d,]+ tỷ USD/.test(n.t)).slice(0, 8);
+    const bankRows = B ? B.hist.filter(h => h.m >= m0 && h.m <= m1) : [];
+    return { yi, label: `${W.dateStr(m0)} – ${W.dateStr(m1)}`, ib, dep, lend, cof, refi, bills, usd, res, cpi, gdp, cg, m2, npl, fed, phaseTxt, A, lane, sold, bought, hikes, cuts, sua, lolr, room, key, bankRows };
+  });
+  return { first, last, yearBlocks, acts, B };
+}
+function chroniclePane() {
+  const d = chronicleData(); if (!d) return '<div class="panel"><h2>Biên niên</h2><p class="small muted">Chưa có tháng nào được khóa sổ.</p></div>';
+  const { first, last, yearBlocks, B } = d; const f1 = v => pp(v, 1), f2 = v => pp(v, 2);
+  setTimeout(() => { const b = $('#copyChron'); if (b) b.onclick = () => copyText(chronicleText()); }, 0);
+  const row = (n, a, b, f = f1) => `<tr><td>${n}</td><td class="r">${f(a)}</td><td class="r">${f(b)}</td></tr>`;
+  const over = `<div class="tw"><table><tr><th>Chỉ tiêu</th><th class="r">Đầu ván (${W.dateStr(first.m)})</th><th class="r">Cuối (${W.dateStr(last.m)})</th></tr>
+    ${row('CPI (%)', first.cpi, last.cpi)}${row('GDP (%)', first.gdp, last.gdp)}${row('USD/VND', first.usd, last.usd, fmt0)}${row('Dự trữ ngoại hối (tỷ USD)', first.reserves, last.reserves, fmt1)}${row('Lãi tái cấp vốn (%)', first.refi, last.refi, f2)}${row('Lãi liên ngân hàng O/N (%)', first.ibON, last.ibON, f2)}${row('Lãi huy động hệ thống (%)', first.depSys, last.depSys, f2)}${row('Lãi cho vay hệ thống (%)', first.lendSys, last.lendSys, f2)}${row('Chi phí vốn hệ thống (%)', first.cof, last.cof, f2)}${row('Tín dụng YoY (%)', first.cg, last.cg)}${row('M2 YoY (%)', first.m2, last.m2)}${row('Nợ xấu hệ thống (%)', first.npl, last.npl)}${row('Dư nợ hệ thống (tỷ)', first.loans, last.loans, fmt0)}${row('Tiền gửi hệ thống (tỷ)', first.deps, last.deps, fmt0)}${row('Tín phiếu NHNN lưu hành (tỷ)', first.bills || 0, last.bills || 0, fmt0)}
+    ${B ? row(`${B.code}: tổng tài sản (tỷ)`, B.hist[0].TA, B.hist[B.hist.length - 1].TA, fmt0) + row(`${B.code}: CAR (%)`, B.hist[0].car, B.hist[B.hist.length - 1].car) + row(`${B.code}: nợ xấu (%)`, B.hist[0].npl, B.hist[B.hist.length - 1].npl) + row(`${B.code}: ROE năm hóa (%)`, B.hist[0].roe, B.hist[B.hist.length - 1].roe) : ''}</table></div>`;
+  const pill = who => `<span class="pill" style="background:var(${(LANES.find(l => l[0] === who) || ['', '--s1'])[1]});color:#fff">${who}</span>`;
+  const yrs = yearBlocks.map(y => `<div class="panel" style="margin-top:12px"><h2>Năm ${y.yi + 1}: ${y.label}</h2>
+    <p><b>Thanh khoản & lãi suất.</b> Liên ngân hàng bình quân ${f2(y.ib.a)} (thấp nhất ${f2(y.ib.lo)}, cao nhất ${f2(y.ib.hi)}); tín phiếu NHNN lưu hành bình quân ${fmt0(y.bills ? y.bills.a : 0)} tỷ. Lãi điều hành ${f2(y.refi.s)} → ${f2(y.refi.e)} (${y.hikes} lần tăng, ${y.cuts} lần giảm). Huy động hệ thống ${f2(y.dep.s)} → ${f2(y.dep.e)}, cho vay ${f2(y.lend.s)} → ${f2(y.lend.e)}, chi phí vốn ${f2(y.cof.s)} → ${f2(y.cof.e)}.${y.sua ? ` NHNN ${y.sua} lần kêu gọi giảm lãi hoặc hạ trần.` : ''}${y.lolr ? ` ${y.lolr} lần tái cấp vốn đặc biệt.` : ''}</p>
+    <p><b>Tỷ giá & dự trữ.</b> USD/VND ${fmt0(y.usd.s)} → ${fmt0(y.usd.e)} (${pp((y.usd.e / y.usd.s - 1) * 100, 1)}), Fed ${f2(y.fed.s)} → ${f2(y.fed.e)}; dự trữ ${fmt1(y.res.s)} → ${fmt1(y.res.e)} tỷ USD (bán ${fmt1(y.sold)}, mua ${fmt1(y.bought)} tỷ USD có log).</p>
+    <p><b>Kinh tế & tín dụng.</b> CPI ${f1(y.cpi.s)} → ${f1(y.cpi.e)} (đỉnh ${f1(y.cpi.hi)}), GDP ${f1(y.gdp.s)} → ${f1(y.gdp.e)}; tín dụng ${f1(y.cg.s)} → ${f1(y.cg.e)}, M2 ${f1(y.m2.s)} → ${f1(y.m2.e)}, nợ xấu ${f1(y.npl.s)} → ${f1(y.npl.e)}${y.room ? `; NHNN nới room ${y.room} lần` : ''}. Pha chu kỳ: ${y.phaseTxt}.</p>
+    ${y.bankRows.length ? `<p><b>${B.code}.</b> Tổng tài sản ${fmt0(y.bankRows[0].TA)} → ${fmt0(y.bankRows[y.bankRows.length - 1].TA)} tỷ, CAR ${f1(y.bankRows[0].car)} → ${f1(y.bankRows[y.bankRows.length - 1].car)}, LDR ${f1(y.bankRows[0].ldr)} → ${f1(y.bankRows[y.bankRows.length - 1].ldr)}, nợ xấu ${f1(y.bankRows[0].npl)} → ${f1(y.bankRows[y.bankRows.length - 1].npl)}, NIM ${f2(sum(y.bankRows.map(r => r.nim)) / y.bankRows.length)}, lợi nhuận năm ${fmt0(sum(y.bankRows.map(r => r.net)))} tỷ, ROE cuối năm ${f1(y.bankRows[y.bankRows.length - 1].roe)}.</p>` : ''}
+    <p><b>Hành động các bên (${y.A.length}).</b></p><ul class="replist">${LANES.map(l => { const L = y.lane(l[0]); return L.length ? `<li>${pill(l[0])} ${L.length} hành động: ${L.slice(0, 12).map(a => `${actWhen(a).replace(/^T/, 'T')}: ${a.text.length > 110 ? a.text.slice(0, 108) + '…' : a.text}`).join(' · ')}${L.length > 12 ? ` · … (+${L.length - 12})` : ''}</li>` : ''; }).join('')}</ul>
+    ${y.key.length ? `<p><b>Diễn biến tiêu biểu (diễn giải tuần).</b></p><ul class="replist">${y.key.map(n => `<li><span class="muted">${W.dateStr(n.m)} tuần ${n.w}:</span> ${n.t.length > 260 ? n.t.slice(0, 258) + '…' : n.t}</li>`).join('')}</ul>` : ''}
+  </div>`).join('');
+  return `<div class="panel"><h2>Biên niên cả ván <button class="btn small" id="copyChron" style="margin-left:8px">Sao chép toàn bộ</button></h2>
+    <p class="small muted">Tóm tắt từ đầu đến ${W.dateStr(last.m)} (${W.hist.filter(h => !h.hist).length} tháng): thanh khoản, lãi suất, tỷ giá, tín dụng, pha chu kỳ, hành động của bạn, chế độ tự động, quyết định, sự kiện và NHNN, kèm các diễn giải tuần tiêu biểu. Nút sao chép cho bản văn bản đầy đủ (mọi hành động và mọi diễn giải tuần) để đọc hoặc gửi đi phân tích.</p>${over}</div>${yrs}`;
+}
+function chronicleText() { // bản văn bản đầy đủ để sao chép
+  const d = chronicleData(); if (!d) return ''; const { first, last, yearBlocks, B } = d; const f1 = v => pp(v, 1), f2 = v => pp(v, 2); const narr = W.narr || [];
+  const L = [`BIÊN NIÊN · BankSim ${W.mode === 'bank' ? B.code : 'NHNN'} · ${W.dateStr(first.m)} → ${W.dateStr(last.m)} (${W.hist.filter(h => !h.hist).length} tháng) · độ khó ${W.diff.name}`, ''];
+  L.push(`Đầu → cuối: CPI ${f1(first.cpi)} → ${f1(last.cpi)}; GDP ${f1(first.gdp)} → ${f1(last.gdp)}; USD/VND ${fmt0(first.usd)} → ${fmt0(last.usd)}; dự trữ ${fmt1(first.reserves)} → ${fmt1(last.reserves)} tỷ USD; TCV ${f2(first.refi)} → ${f2(last.refi)}; LNH ${f2(first.ibON)} → ${f2(last.ibON)}; huy động ${f2(first.depSys)} → ${f2(last.depSys)}; cho vay ${f2(first.lendSys)} → ${f2(last.lendSys)}; chi phí vốn ${f2(first.cof)} → ${f2(last.cof)}; tín dụng ${f1(first.cg)} → ${f1(last.cg)}; M2 ${f1(first.m2)} → ${f1(last.m2)}; nợ xấu ${f1(first.npl)} → ${f1(last.npl)}.`);
+  if (B) L.push(`${B.code}: TA ${fmt0(B.hist[0].TA)} → ${fmt0(B.hist[B.hist.length - 1].TA)}; CAR ${f1(B.hist[0].car)} → ${f1(B.hist[B.hist.length - 1].car)}; nợ xấu ${f1(B.hist[0].npl)} → ${f1(B.hist[B.hist.length - 1].npl)}; ROE ${f1(B.hist[0].roe)} → ${f1(B.hist[B.hist.length - 1].roe)}; điểm CEO ${B.score}.`);
+  for (const y of yearBlocks) { L.push('', `=== Năm ${y.yi + 1}: ${y.label} ===`);
+    L.push(`Thanh khoản & lãi suất: LNH bình quân ${f2(y.ib.a)} (${f2(y.ib.lo)}–${f2(y.ib.hi)}); tín phiếu bình quân ${fmt0(y.bills ? y.bills.a : 0)} tỷ; TCV ${f2(y.refi.s)} → ${f2(y.refi.e)} (${y.hikes} tăng, ${y.cuts} giảm); huy động ${f2(y.dep.s)} → ${f2(y.dep.e)}; cho vay ${f2(y.lend.s)} → ${f2(y.lend.e)}; chi phí vốn ${f2(y.cof.s)} → ${f2(y.cof.e)}.`);
+    L.push(`Tỷ giá & dự trữ: USD/VND ${fmt0(y.usd.s)} → ${fmt0(y.usd.e)} (${pp((y.usd.e / y.usd.s - 1) * 100, 1)}); Fed ${f2(y.fed.s)} → ${f2(y.fed.e)}; dự trữ ${fmt1(y.res.s)} → ${fmt1(y.res.e)} tỷ USD (bán ${fmt1(y.sold)}, mua ${fmt1(y.bought)} tỷ USD).`);
+    L.push(`Kinh tế & tín dụng: CPI ${f1(y.cpi.s)} → ${f1(y.cpi.e)} (đỉnh ${f1(y.cpi.hi)}); GDP ${f1(y.gdp.s)} → ${f1(y.gdp.e)}; tín dụng ${f1(y.cg.s)} → ${f1(y.cg.e)}; M2 ${f1(y.m2.s)} → ${f1(y.m2.e)}; nợ xấu ${f1(y.npl.s)} → ${f1(y.npl.e)}; pha: ${y.phaseTxt}.`);
+    if (y.bankRows.length) L.push(`${B.code}: TA ${fmt0(y.bankRows[0].TA)} → ${fmt0(y.bankRows[y.bankRows.length - 1].TA)}; CAR ${f1(y.bankRows[0].car)} → ${f1(y.bankRows[y.bankRows.length - 1].car)}; LDR ${f1(y.bankRows[0].ldr)} → ${f1(y.bankRows[y.bankRows.length - 1].ldr)}; nợ xấu ${f1(y.bankRows[0].npl)} → ${f1(y.bankRows[y.bankRows.length - 1].npl)}; lợi nhuận ${fmt0(sum(y.bankRows.map(r => r.net)))} tỷ; ROE cuối năm ${f1(y.bankRows[y.bankRows.length - 1].roe)}.`);
+    L.push('Hành động:'); for (const a of y.A) L.push(`  ${actWhen(a)} [${a.who}] ${a.text}${a.why ? ' — vì: ' + a.why : ''}`);
+    const nn = narr.filter(n => n.m >= y.yi * 12 + first.m && n.m <= y.yi * 12 + first.m + 11); if (nn.length) { L.push('Diễn giải tuần:'); for (const n of nn) L.push(`  ${W.dateStr(n.m)} tuần ${n.w}: ${n.t}`); } }
+  return L.join('\n');
+}
 function timelinePane() {
   const acts = W.actions || []; const byM = {}; for (const a of acts) (byM[a.m] = byM[a.m] || []).push(a);
   const months = Object.keys(byM).map(Number).sort((a, b) => b - a);
