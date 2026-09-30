@@ -63,22 +63,41 @@ Trò chơi bắt đầu tháng 10/2025 trên nền 45 tháng lịch sử vĩ mô
 - **Chu kỳ nội sinh.** Bất động sản có quán tính, nóng lên khi lãi suất thực thấp và tín dụng nhanh, đổ vỡ khi NHNN thắt chặt; lạm phát đi theo tín dụng, chênh lệch sản lượng và tỷ giá; Fed đi theo chu kỳ Mỹ ~7 năm từng bước 0,25. Pha chu kỳ (Mở rộng, Quá nóng, Thắt chặt, Suy giảm, Phục hồi) được suy ra từ trạng thái và hiển thị khắp nơi.
 - **Sự kiện phát sinh từ trạng thái.** Xác suất mỗi sự kiện tính từ chu kỳ: khủng hoảng trái phiếu chỉ xảy ra khi BĐS nóng và lãi suất tăng; rút tiền hàng loạt khi có ngân hàng yếu; USD rút khi chênh lệch lãi suất âm sâu; sốt vàng khi lạm phát hoặc tỷ giá cao; nới room giữa năm khi lạm phát thấp và tín dụng chậm; Thông tư 02 khi nợ xấu tăng và tăng trưởng yếu. Chỉ các cú sốc bên ngoài (chiến sự, thương mại, thiên tai, suy thoái toàn cầu) giữ xác suất nền nhỏ, nhân theo độ khó.
 
+## Lịch văn bản pháp luật và cơ chế room
+
+Engine mang một **lịch văn bản thật** (`REG_CAL`), áp dụng đúng tháng hiệu lực trong cả ván chơi lẫn backtest (ở chế độ NHNN, việc thuộc thẩm quyền NHNN do bạn quyết qua các quyết định; luật và lộ trình đã ban hành vẫn áp dụng):
+
+| Hiệu lực | Văn bản | Tác động trong game |
+|---|---|---|
+| 24/4/2023 → 31/12/2024 | Thông tư 02/2023, gia hạn bởi TT06/2024 | Cơ cấu nợ, giữ nguyên nhóm nợ: hình thành nợ xấu ×0,8; hết hiệu lực 1/1/2025 nợ xấu và trích lập tăng |
+| 1/10/2023 | Lộ trình TT22/2019 | Trần vốn ngắn hạn cho vay TDH 30% |
+| 1/1/2024, 1/1/2025, 1/1/2026 | Thông tư 26/2022 | Tiền gửi có kỳ hạn KBNN tính vào mẫu số LDR: 40% (2024), 20% (2025), 0% (2026); nhóm quốc doanh mất dư địa dần |
+| Đầu 2024, đầu 2025 | Chỉ tiêu tín dụng | Room hệ thống 15% (2024), 16% (2025); các đợt nới room 8/2024, 28/11/2024, 7/2025 trong backtest |
+| 15/10/2025 | Luật TCTD sửa đổi 96/2025 (luật hóa NQ42) | Quyền thu giữ tài sản bảo đảm: thu hồi nợ nhóm 4 nhanh hơn (7%/tháng), thu hồi sau xóa nợ cao hơn (×1,0 thay vì ×0,8) |
+| 15/5/2026 | Thông tư 08/2026 | Tính lại 20% tiền gửi KBNN vào LDR |
+| 1/7/2026 | Thông tư 25/2026 | Trần vốn ngắn hạn cho vay TDH 40% |
+| 1/8/2026 | Sửa TT22 | Tiền gửi KBNN tính 50% vào LDR |
+
+Mỗi văn bản khi có hiệu lực hiện thẻ sự kiện, ghi vào dòng thời gian (làn NHNN, lý do "theo lịch hiệu lực thật").
+
+**Room tín dụng có thể xin thêm, tùy ý chí NHNN.** Ngân hàng máy nhắm dùng hết room (mục tiêu = room + 2, tối đa 28). Từ tháng 5 đến tháng 11, ngân hàng đã dùng ≥ 65% room có thể xin nới: NHNN sẵn lòng cấp khi CPI < 4,5% và tỷ giá ổn (xác suất 60%/tháng nếu GDP còn dưới mục tiêu 8%, 35% nếu đã đạt, 10% khi lạm phát hoặc tỷ giá căng); chỉ cấp cho ngân hàng có CAR > tối thiểu + 1, nợ xấu gộp < 3%, thanh khoản ≥ 10%; **ngân hàng lớn (quốc doanh hoặc tổng tài sản trên 900 nghìn tỷ) được +4, còn lại +2**, mỗi năm một lần. Người chơi ngân hàng dùng lựa chọn "Xin NHNN nới room" với cùng quy tắc; người chơi NHNN nhận quyết định "Ngân hàng xin nới room" (nới theo điều kiện, chỉ nới cho quốc doanh, hoặc từ chối). Đợt nới room chung (sự kiện) cấp +3 đến +6 tùy sức khỏe, ngân hàng cổ phần khỏe được nhiều nhất.
+
 ## Backtest 2024–2025: mô hình tự chạy lại hai năm thật
 
 `node tools/backtest.js` khởi tạo thế giới ở 12/2023 (quy mô ngân hàng thu về theo dư nợ cuối 2023), ép các cú sốc ngoại sinh thật theo lịch (đường lãi suất Fed; USD mạnh và sốt vàng 3–11/2024; nới room 8/2024 và 7/2025; bão Yagi 9/2024; Trump đắc cử 11/2024; chỉ thị thúc tín dụng 2/2025; thuế đối ứng Mỹ 4/2025; chiến sự Israel–Iran 6/2025), tắt sự kiện ngẫu nhiên, để NHNN tự động và 9 ngân hàng máy tự phản ứng, rồi so với dữ liệu thật từng quý (trung bình 8 lần chạy; sim/thật):
 
 | Chỉ tiêu | T6/2024 | T12/2024 | T6/2025 | T9/2025 | RMSE 21 tháng |
 |---|---|---|---|---|---|
-| CPI % | 3,5 / 4,3 | 3,5 / 2,9 | 3,6 / 3,6 | 4,1 / 3,4 | 0,6 |
-| GDP % | 6,7 / 7,3 | 7,2 / 7,5 | 7,4 / 8,2 | 7,4 / 8,2 | 0,6 |
-| Lãi tái cấp vốn % | 4,5 / 4,5 | 4,5 / 4,5 | 4,5 / 4,5 | 4,5 / 4,5 | 0,0 |
-| Liên ngân hàng O/N % | 4,2 / 4,5 | 3,8 / 4,3 | 4,3 / 3,5 | 4,0 / 4,7 | 1,2 |
-| USD/VND | 24.652 / 25.460 | 25.014 / 25.480 | 25.390 / 26.150 | 25.632 / 26.380 | 586 |
-| Lãi huy động 12 tháng % | 5,6 / 4,9 | 5,3 / 5,2 | 5,6 / 4,9 | 5,6 / 4,9 | 0,6 |
-| Lãi cho vay bình quân % | 8,2 / 7,5 | 7,8 / 7,7 | 8,0 / 7,2 | 8,1 / 7,3 | 0,5 |
-| Tín dụng YoY % | 14,0 / 15,0 | 13,2 / 15,1 | 12,8 / 19,3 | 13,0 / 19,8 | 4,0 |
-| Dự trữ ngoại hối tỷ USD | 87,5 / 85 | 86,8 / 80 | 83,6 / 80 | 81,6 / 80 | 4,3 |
-| Nợ xấu % | 2,2 / 2,3 | 2,5 / 2,1 | 2,6 / 2,2 | 2,7 / 2,2 | 0,4 |
+| CPI % | 3,5 / 4,3 | 3,5 / 2,9 | 3,7 / 3,6 | 4,3 / 3,4 | 0,6 |
+| GDP % | 6,8 / 7,3 | 7,2 / 7,5 | 7,6 / 8,2 | 7,6 / 8,2 | 0,6 |
+| Lãi tái cấp vốn % | 4,5 / 4,5 | 4,5 / 4,5 | 4,5 / 4,5 | 4,7 / 4,5 | 0,0 |
+| Liên ngân hàng O/N % | 4,2 / 4,5 | 3,9 / 4,3 | 4,3 / 3,5 | 4,3 / 4,7 | 1,2 |
+| USD/VND | 24.655 / 25.460 | 25.021 / 25.480 | 25.397 / 26.150 | 25.640 / 26.380 | 581 |
+| Lãi huy động 12 tháng % | 5,7 / 4,9 | 5,3 / 5,2 | 5,7 / 4,9 | 5,8 / 4,9 | 0,6 |
+| Lãi cho vay bình quân % | 8,0 / 7,5 | 7,6 / 7,7 | 8,0 / 7,2 | 8,1 / 7,3 | 0,5 |
+| Tín dụng YoY % | 14,5 / 15,0 | 15,3 / 15,1 | 17,4 / 19,3 | 17,4 / 19,8 | 1,2 |
+| Dự trữ ngoại hối tỷ USD | 87,5 / 85 | 86,9 / 80 | 83,8 / 80 | 82,0 / 80 | 4,4 |
+| Nợ xấu % | 1,5 / 2,3 | 1,4 / 2,1 | 2,2 / 2,2 | 2,4 / 2,2 | 0,6 |
 
 Hành động của NHNN mô phỏng so với thực tế (mô phỏng in kèm lý do trong `tools/backtest.js`):
 
@@ -93,12 +112,12 @@ Hành động của NHNN mô phỏng so với thực tế (mô phỏng in kèm l
 Hiệu chỉnh rút ra từ backtest (đã đưa vào engine):
 - **NHNN tự động**: giữ lãi suất điều hành như 2024–2025 (không cắt theo Taylor khi Fed còn cao hơn 0,5 điểm hoặc VND mất giá trên 2%; chỉ tăng khi CPI trên 4,3% và khoảng cách Taylor lớn, hoặc tỷ giá vỡ biên độ với dự trữ thấp; cắt vì tăng trưởng chỉ khi GDP dưới 6,5%); phát hành tín phiếu từ khi VND mất giá trên 3%/năm, bán USD từ trên 4%/năm với lượng tỷ lệ theo mức vượt; nới room cho cả hệ thống khi Chính phủ thúc tăng trưởng.
 - **Tỷ giá**: áp lực = 0,5·(Fed − liên NH) + 1,8 + 0,15·max(0, CPI − 4) + cú sốc kéo dài (USD mạnh, thuế quan, rút vốn), tỷ giá tiến 35% khoảng cách mỗi tháng; 1 tỷ USD bán ra hạ đà mất giá 0,2 điểm (2024: bán ~7 tỷ USD mà VND vẫn −5%).
-- **Ngân hàng máy**: sát trần LDR thì phát hành giấy tờ có giá (1,5% tài sản/tháng) và vẫn cho vay tới 12%; khách cũ đảo nợ ít nhạy lãi hơn khách mới; ngân hàng khẩu vị cao có cầu tốt hơn; giữ hồ sơ kỳ hạn quen thuộc.
+- **Ngân hàng máy**: nhắm dùng hết room (mục tiêu = room + 2, tối đa 28) và bù cả nợ đã xóa; sát trần LDR thì phát hành giấy tờ có giá (2% tài sản/tháng) và vẫn cho vay tới 15%; khách cũ đảo nợ ít nhạy lãi hơn khách mới; ngân hàng khẩu vị cao có cầu tốt hơn; giữ hồ sơ kỳ hạn quen thuộc.
 - **Thị trường**: lãi huy động 12 tháng = tái cấp vốn + 0,8 (thay vì +1,2); biên cho vay 2,3; tiền gửi tăng chậm hơn tín dụng 1,5 điểm (LDR nhích lên như thực tế); gửi liên ngân hàng ~9% tài sản là cơ cấu bình thường, chỉ phần vượt mới làm lãi liên ngân hàng tụt.
 - **Nợ xấu**: hệ số hình thành mức "Thực tế" 1,15 (trước 1,35), tham chiếu tăng trưởng 6,5%; kỳ vọng ROE cổ đông nâng lên 15% (thực tế) và 18% (khắc nghiệt) để độ khó không đổi.
 - **Kỹ thuật**: mốc khởi đầu game có thể đặt ở bất kỳ điểm dữ liệu nào (`new World(mode, id, diff, { startIdx, scale, scripted })`), tháng 0 là điểm dữ liệu cuối (T9/2025), tháng 1 là T10/2025.
 
-Còn lệch: tín dụng 2025 (sim 13% so với 19,8% thật) và GDP 2025 (7,4 so với 8,2): năm 2025 có cú bứt phá room 20%+, BĐS nóng và xuất khẩu chạy trước thuế mà mô hình chỉ tái tạo một phần; lãi cho vay cao hơn thật ~0,5 điểm; dự trữ ngoại hối giảm chậm hơn thật ~5 tỷ USD.
+Còn lệch: tín dụng 2025 (sim 17,4% so với 19,8% thật, sau khi ngân hàng máy dùng hết room, có cơ chế xin nới room và các đợt nới room thật) và GDP 2025 (7,6 so với 8,2): năm 2025 có cú bứt phá room 20%+, BĐS nóng và xuất khẩu chạy trước thuế mà mô hình chỉ tái tạo một phần; lãi cho vay cao hơn thật ~0,5 điểm; dự trữ ngoại hối giảm chậm hơn thật ~5 tỷ USD.
 
 ## Sốt vàng: tiền mua vàng vẫn là tiền ngân hàng
 

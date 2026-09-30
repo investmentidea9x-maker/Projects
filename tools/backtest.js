@@ -12,7 +12,7 @@ const SCRIPT={
   3:[{shock:{name:'USD mạnh (DXY 105), sốt vàng, rút vốn gián tiếp',left:9,fx:3.5}},{ev:'gold'}],
   8:[{ev:'room',note:'NHNN nới room 8/2024'}],
   9:[{ev:'yagi'}],
-  11:[{shock:{name:'Trump đắc cử, USD tăng',left:5,fx:1.5}}],
+  11:[{shock:{name:'Trump đắc cử, USD tăng',left:5,fx:1.5}},{ev:'room',note:'NHNN nới room lần 2 (28/11/2024)'}],
   14:[{ev:'growthpush',note:'chỉ thị tăng trưởng tín dụng 16%+, nới room (2/2025)'}],
   16:[{ev:'tariff',note:'thuế đối ứng 46% (2/4/2025)'}],
   18:[{ev:'iran',note:'chiến sự Israel–Iran 12 ngày'}],
