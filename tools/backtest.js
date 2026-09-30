@@ -9,7 +9,7 @@ const m={}; new Function('module',js+';module.exports={World,HIST,EVENTS,MAC,set
 const L0=23; // 12/2023
 // Kịch bản sự kiện thật 2024–2025 (k = tháng kể từ 12/2023): id sự kiện trong game hoặc cú sốc trực tiếp
 const SCRIPT={
-  3:[{shock:{name:'USD mạnh (DXY 105), sốt vàng, rút vốn gián tiếp',left:9,fx:3.5}},{ev:'gold'}],
+  3:[{shock:{name:'USD mạnh (DXY 105), sốt vàng, rút vốn gián tiếp',left:9,fx:4.3}},{ev:'gold'}],
   8:[{ev:'room',note:'NHNN nới room 8/2024'}],
   9:[{ev:'yagi'}],
   11:[{shock:{name:'Trump đắc cử, USD tăng',left:5,fx:1.5}},{ev:'room',note:'NHNN nới room lần 2 (28/11/2024)'}],
@@ -19,7 +19,7 @@ const SCRIPT={
   19:[{ev:'room',note:'NHNN nới room 7/2025'}],
 };
 function run(seed, verbose){
-  const W=new World('bank','mbb','real',{startIdx:L0, scale:HIST.credit[L0]/HIST.credit[35], scripted:true}); setW(W);
+  const W=new World('bank','mbb','real',{startIdx:L0, scale:HIST.credit[L0]/HIST.credit[35], scripted:true}); setW(W); W.sbv.fxDefend='loose'; W.sbv.band=5; // NHNN thật 2024–2025 để VND trượt tới mép biên độ ±5%, chỉ bán USD khi mất giá > 4%/năm
   const rows=[];
   for(let k=1;k<=21;k++){ const idx=L0+k;
     W.macro.fedRate=HIST.fed[idx]; W.us.target=HIST.fed[idx]; // đường lãi suất Fed thật (ngoại sinh)
