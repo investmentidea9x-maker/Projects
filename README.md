@@ -77,6 +77,7 @@ Trò chơi bắt đầu tháng 10/2025 trên nền 45 tháng lịch sử vĩ mô
 - Rút tiền hàng loạt nhắm vào ngân hàng yếu nhất, kể cả của bạn.
 - Chi phí vận hành tăng theo lạm phát; NHNN siết room khi CPI vượt 5%; thanh tra phạt nặng và công bố công khai.
 - Ngân hàng quốc doanh phải nộp cổ tức tối thiểu 30% và khó tăng vốn; cổ đông ngân hàng cổ phần đòi ROE cao hơn.
+- Nợ xấu không có lối thoát rẻ: VAMC chỉ mua nợ có tài sản bảo đảm, tối đa 2% dư nợ mỗi đợt, 6 tháng một đợt, trái phiếu đặc biệt lãi 0%, lỗ chiết khấu 5% ngay, trích 20% mệnh giá mỗi năm, ngân hàng vẫn tự thu hồi (tốc độ theo thị trường BĐS), nợ xấu gộp (kể cả phần bán VAMC) vẫn bị tính khi cấp room, chặn cổ tức và tính phụ trội liên ngân hàng, sau 5 năm phải mua lại phần chưa xử lý. Bán nợ theo giá thị trường thu 25–55% mệnh giá bằng tiền mặt, ghi lỗ ngay. Cách thật sự sạch là dùng dự phòng, chịu lỗ, và ngừng tạo nợ xấu mới.
 
 ## Sự kiện ngẫu nhiên
 

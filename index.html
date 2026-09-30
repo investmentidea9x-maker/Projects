@@ -342,7 +342,9 @@ class Bank {
     this.spec = spec; this.code = spec.code;
     this.brand = spec.brand ?? T.brand; this.opexRate = spec.opex ?? T.opex; // chi phí hoạt động, % tổng tài sản/năm
     this.concentrated = 0; // dư nợ tập trung vào 1 khách hàng BĐS (sự kiện)
-    this.vamc = 0;         // trái phiếu đặc biệt VAMC
+    this.vamc = 0;         // trái phiếu đặc biệt VAMC (giá trị ghi sổ sau trích lập)
+    this.vamcFace = 0;     // dư nợ gốc đã bán VAMC còn phải thu hồi (tính vào nợ xấu gộp)
+    this.vamcStart = -999; this.vamcLast = -999;
     const TA = spec.assets;
     const loans = TA * spec.loanRatio;
     // Sổ cho vay: mỗi phân khúc có 5 nhóm nợ (nhóm 1 = perf, nhóm 2 = w, nhóm 3–5)
@@ -408,6 +410,7 @@ class Bank {
   perfLoans() { return SECTORS.reduce((a, s) => a + this.book[s.id].perf + this.book[s.id].w, 0) + this.concentrated; }
   nplAmount() { return SECTORS.reduce((a, s) => a + this.book[s.id].g3 + this.book[s.id].g4 + this.book[s.id].g5, 0); }
   nplRatio() { const g = this.grossLoans(); return g > 0 ? this.nplAmount() / g : 0; }
+  nplGross() { const g = this.grossLoans() + (this.vamcFace || 0); return g > 0 ? (this.nplAmount() + (this.vamcFace || 0)) / g : 0; } // nợ xấu gộp kể cả phần đã bán VAMC (NHNN dùng để xếp hạng)
   mltLoans() { return SECTORS.reduce((a, s) => a + this.sectorTotal(s.id) * s.mlt, 0) + this.concentrated * 0.7; }
   deposits() { return this.dep.casa + this.dep.lt6 + this.dep.m6_12 + this.dep.gt12; }
   totalAssets() { return this.cash + this.reserve + this.ibLend + this.gbonds + this.grossLoans() - this.prov + this.fixed + this.vamc + (this.otherA || 0); }
@@ -456,7 +459,7 @@ class Bank {
   healthSpread() { // phụ trội lãi suất liên ngân hàng khi ngân hàng yếu
     let sp = 0; const car = this.car(), npl = this.nplRatio() * 100;
     if (car < 9) sp += 1.0; if (car < 8) sp += 2.0;
-    if (npl > 3) sp += 0.7; if (npl > 5) sp += 2.0;
+    const nplG = this.nplGross() * 100; if (nplG > 3) sp += 0.7; if (nplG > 5) sp += 2.0; // thị trường 2 nhìn nợ xấu gộp
     if (this.liqReserve() < 10) sp += 1.0;
     if (this.reputation < 0) sp += -this.reputation * 1.5;
     return sp;
@@ -521,7 +524,13 @@ class Bank {
     }
     this.cash += runoffTotal;
     // VAMC: thu hồi dần 5%/tháng, trích lập 20%/năm theo quy định
-    if (this.vamc > 0) { const rec = this.vamc * 0.05; this.vamc -= rec; this.cash += rec; const vprov = this.vamc * 0.20 / 12; pnl.prov += vprov; this.vamc -= vprov; } // trích lập VAMC: vào chi phí dự phòng, trừ vốn ở bước 9
+    if (this.vamcFace > 0) { // VAMC: ngân hàng vẫn tự thu hồi (chậm, phụ thuộc thị trường BĐS), trích 20% mệnh giá/năm, sau 5 năm phải mua lại phần chưa xử lý
+      const rec = this.vamcFace * 0.015 * clamp(M.re, 0.4, 1.5); const bookShare = this.vamc > 0 ? this.vamc / this.vamcFace : 0;
+      this.vamcFace -= rec; this.vamc -= rec * bookShare; this.cash += rec; recovery += rec * (1 - bookShare); // phần thu vượt giá trị sổ là thu nhập khác
+      const vprov = Math.min(this.vamc, this.vamcFace * 0.20 / 12); pnl.prov += vprov; this.vamc -= vprov;
+      if (monthIdx - this.vamcStart >= 60 && this.vamcFace > 1) { const back = this.vamcFace; this.prov += back - Math.max(0, this.vamc); this.book.re.g5 += back; this.vamc = 0; this.vamcFace = 0; this.addLog(monthIdx, `Trái phiếu VAMC đáo hạn: mua lại ${fmt0(back)} tỷ nợ chưa xử lý về nhóm 5.`, 'bad'); }
+      if (this.vamcFace < 1) { this.vamcFace = 0; this.vamc = 0; }
+    }
     // dự phòng: xóa nợ dùng dự phòng, rồi trích thêm cho đủ
     this.prov -= writeoff; // xóa nợ nhóm 5 (phần thu hồi đã ghi nhận vào tiền)
     // phần thu hồi vượt dự phòng đã dùng ghi nhận vào thu nhập khác
@@ -639,7 +648,7 @@ class Bank {
 
     /* 10. Uy tín hồi phục dần */
     this.reputation = Math.min(0, this.reputation + 0.25);
-    if (this.nplRatio() < 0.03 && this.car() > 9) this.reputation = Math.min(0, this.reputation + 0.25);
+    if (this.nplGross() < 0.03 && this.car() > 9) this.reputation = Math.min(0, this.reputation + 0.25);
 
     /* 11. Kiểm tra tuân thủ */
     const car = this.car();
@@ -665,7 +674,7 @@ class Bank {
     let divRate = this.pol.divRate;
     if (this.type === 'sob' && divRate < 30 && this.isPlayer) { divRate = 30; this.addLog(W.month, 'Bộ Tài chính yêu cầu nộp cổ tức tiền mặt tối thiểu 30% lợi nhuận về ngân sách.', 'warn'); }
     if (yearNet > 0 && divRate > 0) {
-      if (this.car() < 9 || this.nplRatio() > 0.03) this.addLog(W.month, 'NHNN không chấp thuận chia cổ tức tiền mặt (CAR < 9% hoặc nợ xấu > 3%).', 'warn');
+      if (this.car() < 9 || this.nplGross() > 0.03 || this.vamcFace > 0) this.addLog(W.month, 'NHNN không chấp thuận chia cổ tức tiền mặt (CAR < 9%, nợ xấu gộp > 3% hoặc còn trái phiếu VAMC).', 'warn');
       else { const d = yearNet * divRate / 100; this.cash -= d; this.equity.retained -= d; this.addLog(W.month, `Chia cổ tức tiền mặt ${fmt0(d)} tỷ (${divRate}% lợi nhuận).`, 'good'); }
     }
     const roe = yearNet / Math.max(1, this.totalEquity()) * 100; this.roeLast = roe;
@@ -707,13 +716,30 @@ class Bank {
     this.addLog(W.month, `Tăng vốn điều lệ thêm ${fmt0(amount)} tỷ (phí phát hành ${fmt0(fee)} tỷ).`, 'good');
     return null;
   }
+  vamcEligible() { // VAMC chỉ mua nợ có tài sản bảo đảm, hồ sơ pháp lý đủ; tối đa 2% dư nợ mỗi đợt
+    const EL = { re: 1.0, corp: 0.7, agri: 0.6, cons: 0 }; let face = 0, prov = 0;
+    for (const s of SECTORS) { const b = this.book[s.id]; const e = EL[s.id] ?? 0; const c = 1 - s.coll; face += (b.g4 + b.g5) * e; prov += (b.g4 * 0.5 + b.g5 * 1.0) * c * e; }
+    const cap = this.grossLoans() * 0.02; const k = face > cap ? cap / face : 1;
+    return { face: face * k, prov: prov * k, k };
+  }
   sellToVamc(W) {
-    const npl = this.nplAmount(); if (npl < 1) return 'Không có nợ xấu để bán.';
-    // Bán nợ nhóm 5 và 4 cho VAMC lấy trái phiếu đặc biệt, giá = dư nợ − dự phòng cụ thể đã trích
-    let sold = 0, provUsed = 0;
-    for (const s of SECTORS) { const b = this.book[s.id]; const c = 1 - s.coll; sold += b.g4 + b.g5; provUsed += (b.g4 * 0.5 + b.g5 * 1.0) * c; b.g4 = 0; b.g5 = 0; }
-    this.prov -= provUsed; this.vamc += sold - provUsed;
-    this.addLog(W.month, `Bán ${fmt0(sold)} tỷ nợ nhóm 4–5 cho VAMC, nhận trái phiếu đặc biệt ${fmt0(sold - provUsed)} tỷ (phải trích lập 20%/năm).`, 'warn');
+    if (this.nplRatio() < 0.02) return 'VAMC chỉ nhận nợ khi tỷ lệ nợ xấu từ 2% trở lên.';
+    if (W.month - this.vamcLast < 6) return 'Mỗi 6 tháng chỉ được bán một đợt cho VAMC.';
+    const el = this.vamcEligible(); if (el.face < 1) return 'Không có nợ đủ điều kiện (cần tài sản bảo đảm; nợ tiêu dùng tín chấp không bán được).';
+    const EL = { re: 1.0, corp: 0.7, agri: 0.6, cons: 0 };
+    for (const s of SECTORS) { const b = this.book[s.id]; const e = (EL[s.id] ?? 0) * el.k; b.g4 -= b.g4 * e; b.g5 -= b.g5 * e; }
+    const haircut = el.face * 0.05; // chiết khấu hồ sơ, chi phí định giá: lỗ ngay
+    this.prov -= el.prov; const bond = el.face - el.prov - haircut; this.vamc += bond; this.vamcFace += el.face;
+    this.equity.retained -= haircut; this.pnlYTD.other -= haircut; this.vamcLast = W.month; if (this.vamcStart < 0 || this.vamcFace <= el.face + 1) this.vamcStart = W.month;
+    this.addLog(W.month, `Bán ${fmt0(el.face)} tỷ nợ nhóm 4–5 có tài sản bảo đảm cho VAMC: nhận trái phiếu đặc biệt ${fmt0(bond)} tỷ (lãi 0%), lỗ chiết khấu ${fmt0(haircut)} tỷ, phải trích 20%/năm, tự thu hồi nợ, nợ xấu gộp vẫn ${pp(this.nplGross() * 100)}; sau 5 năm mua lại phần chưa xử lý.`, 'warn');
+    return null;
+  }
+  sellNplMarket(W) { // bán nợ theo giá thị trường (DATC, công ty mua bán nợ): tiền mặt ngay, lỗ ngay
+    let face = 0, spec = 0, price = 0;
+    for (const s of SECTORS) { const b = this.book[s.id]; const c = 1 - s.coll; const p = s.id === 'cons' ? 0.25 : 0.55; face += b.g4 + b.g5; spec += (b.g4 * 0.5 + b.g5 * 1.0) * c; price += (b.g4 + b.g5) * p * (s.id === 'cons' ? 1 : (0.5 + s.coll)); b.g4 = 0; b.g5 = 0; }
+    if (face < 1) return 'Không có nợ nhóm 4–5 để bán.';
+    const loss = face - spec - price; this.prov -= spec; this.cash += price; this.equity.retained -= loss; this.pnlYTD.other -= loss; // lỗ (hoặc lãi) so với giá trị đã trích lập
+    this.addLog(W.month, `Bán ${fmt0(face)} tỷ nợ nhóm 4–5 theo giá thị trường: thu ${fmt0(price)} tỷ tiền mặt (${pp(price / face * 100, 0)} mệnh giá), ${loss >= 0 ? 'lỗ thêm ' + fmt0(loss) : 'hoàn nhập ' + fmt0(-loss)} tỷ so với dự phòng đã trích.`, 'warn');
     return null;
   }
 }
@@ -735,7 +761,7 @@ const EVENTS = [
       for (const k of ['lt6', 'm6_12']) { const out = v.dep[k] * 0.08 * W.diff.dep; v.dep[k] -= out; v.cash -= out; }
       v.addLog(W.month, 'Bị tin đồn tấn công: khách xếp hàng rút tiền, 8% tiền gửi ngắn hạn rút ngay trong tuần đầu!', 'bad'); } },
   { id: 'room', w: 2, cond: W => W.sbv.roomOn && W.monthOfYear >= 6, title: 'NHNN nới room tín dụng', text: 'NHNN cấp thêm hạn mức tăng trưởng tín dụng 2–4 điểm % cho các ngân hàng có CAR cao và nợ xấu thấp.',
-    apply: W => { for (const b of W.banks) { const bonus = b.car() > 11 && b.nplRatio() < 0.03 ? 4 : b.car() > 9 && b.nplRatio() < 0.035 ? 2 : 0; b.room += bonus; if (bonus) b.addLog(W.month, `Được nới room thêm ${bonus} điểm % (room mới ${b.room}%).`, 'good'); else b.addLog(W.month, 'Không được nới room do CAR thấp hoặc nợ xấu cao.', 'warn'); } } },
+    apply: W => { for (const b of W.banks) { const bonus = b.car() > 11 && b.nplGross() < 0.03 ? 4 : b.car() > 9 && b.nplGross() < 0.035 ? 2 : 0; b.room += bonus; if (bonus) b.addLog(W.month, `Được nới room thêm ${bonus} điểm % (room mới ${b.room}%).`, 'good'); else b.addLog(W.month, 'Không được nới room do CAR thấp hoặc nợ xấu cao.', 'warn'); } } },
   { id: 'tt02', w: 1.5, cond: W => !W.sbv.forbearance && W.sysNpl() > 0.03, title: 'Thông tư 02: cơ cấu nợ, giữ nguyên nhóm nợ', text: 'NHNN cho phép cơ cấu lại thời hạn trả nợ và giữ nguyên nhóm nợ trong 12 tháng. Nợ xấu ghi nhận chậm lại, nhưng rủi ro thật vẫn còn đó.',
     apply: W => { W.sbv.forbearance = true; W.forbearanceLeft = 12; } },
   { id: 'fxstress', w: 2, cond: W => W.macro.fedRate - W.market.ibON > 2, title: 'Tỷ giá căng thẳng, NHNN hút tiền qua tín phiếu', text: 'Chênh lệch lãi suất VND–USD âm sâu, tỷ giá tăng. NHNN phát hành tín phiếu hút VND để đẩy lãi suất liên ngân hàng lên. Thanh khoản hệ thống co lại trong 3 tháng.',
@@ -839,7 +865,7 @@ class World {
     for (const b of this.banks) {
       let r = this.sbv.sysRoom;
       if (b.car() > 11) r += 1.5; if (b.car() < 9) r -= 3;
-      if (b.nplRatio() > 0.03) r -= 2.5; if (b.nplRatio() < 0.015) r += 1;
+      if (b.nplGross() > 0.03) r -= 2.5; if (b.nplGross() < 0.015) r += 1; // xếp hạng cấp room theo nợ xấu gộp
       if (b.roomPenalty) { r -= 4; b.roomPenalty = false; }
       b.room = Math.max(0, Math.round(r * 2) / 2);
     }
@@ -1236,7 +1262,7 @@ const Scene = {
       const B = W.player;
       box(8, 40, 190, [
         ['CAR', pp(B.car(), 1), st(B.car() >= S.carMin + 1, B.car() >= S.carMin)], ['LDR', pp(B.ldr(), 0), st(B.ldr() <= S.ldrMax - 3, B.ldr() <= S.ldrMax)],
-        ['Vốn NH→TDH', pp(B.mltRatio(), 0), st(B.mltRatio() <= S.mltMax - 4, B.mltRatio() <= S.mltMax)], ['Nợ xấu', pp(B.nplRatio() * 100, 2), st(B.nplRatio() < 0.02, B.nplRatio() < 0.03)],
+        ['Vốn NH→TDH', pp(B.mltRatio(), 0), st(B.mltRatio() <= S.mltMax - 4, B.mltRatio() <= S.mltMax)], ['Nợ xấu / gộp VAMC', `${pp(B.nplRatio() * 100, 1)} / ${pp(B.nplGross() * 100, 1)}`, st(B.nplGross() < 0.02, B.nplGross() < 0.03)],
         ['Dự trữ TK', pp(B.liqReserve(), 0), st(B.liqReserve() >= 13, B.liqReserve() >= 10)], ['Tín dụng/room', `${pp(B.creditGrowthYTD(), 1)}/${B.room}%`, st(B.creditGrowthYTD() <= B.room - 1, B.creditGrowthYTD() <= B.room)],
       ], 'An toàn');
       const h1 = B.hist.length ? B.hist[B.hist.length - 1] : null;
@@ -1442,7 +1468,7 @@ function updateTop() {
       + kpiCell('CAR', pp(B.car()), statusOf(B.car() >= S.carMin + 1, B.car() >= S.carMin))
       + kpiCell('LDR', pp(B.ldr(), 1), statusOf(B.ldr() <= S.ldrMax - 3, B.ldr() <= S.ldrMax))
       + kpiCell('Vốn NH → TDH', pp(B.mltRatio(), 1), statusOf(B.mltRatio() <= S.mltMax - 4, B.mltRatio() <= S.mltMax))
-      + kpiCell('Nợ xấu', pp(B.nplRatio() * 100), statusOf(B.nplRatio() < 0.02, B.nplRatio() < 0.03))
+      + kpiCell('Nợ xấu (gộp VAMC)', `${pp(B.nplRatio() * 100, 1)} (${pp(B.nplGross() * 100, 1)})`, statusOf(B.nplGross() < 0.02, B.nplGross() < 0.03))
       + kpiCell('Dự trữ thanh khoản', pp(B.liqReserve(), 1), statusOf(B.liqReserve() >= 13, B.liqReserve() >= 10))
       + kpiCell('Tín dụng YTD / room', `${pp(B.creditGrowthYTD(), 1)} / ${B.room}%`, statusOf(B.creditGrowthYTD() <= B.room - 1, B.creditGrowthYTD() <= B.room))
       + kpiCell('LN tháng', fmt0(B.lastPnl.net) + ' tỷ', statusOf(B.lastPnl.net > 0, B.lastPnl.net > -B.totalEquity() * 0.005))
@@ -1508,7 +1534,8 @@ function alertsFor(B) {
   if (B.ldr() > S.ldrMax) a.push(['bad', `LDR ${pp(B.ldr(), 1)} vượt trần ${S.ldrMax}%. Tăng lãi suất huy động, phát hành giấy tờ có giá hoặc hãm tăng trưởng tín dụng.`]);
   if (B.mltRatio() > S.mltMax) a.push(['bad', `Vốn ngắn hạn cho vay trung dài hạn ${pp(B.mltRatio(), 1)} vượt ${S.mltMax}%. Cần thêm tiền gửi ≥12 tháng, trái phiếu dài hạn hoặc giảm cho vay mua nhà/BĐS.`]);
   if (B.liqReserve() < 10) a.push(['bad', `Dự trữ thanh khoản ${pp(B.liqReserve(), 1)} dưới 10%. Giữ thêm tiền mặt/TPCP.`]);
-  if (B.nplRatio() > 0.03) a.push(['warn', `Nợ xấu ${pp(B.nplRatio() * 100)} trên 3%: bị hạn chế chia cổ tức và nới room. Cân nhắc bán nợ cho VAMC hoặc giảm khẩu vị rủi ro.`]);
+  if (B.nplGross() > 0.03) a.push(['warn', `Nợ xấu gộp ${pp(B.nplGross() * 100)} (nội bảng ${pp(B.nplRatio() * 100)}) trên 3%: bị hạn chế chia cổ tức và nới room. VAMC chỉ giấu tạm; xử lý thật bằng dự phòng, bán nợ chịu lỗ hoặc siết khẩu vị.`]);
+  if (B.vamcFace > 0) a.push(['info', `Còn ${fmt0(B.vamcFace)} tỷ nợ đã bán VAMC phải thu hồi; trích 20%/năm, đáo hạn ${W.dateStr(B.vamcStart + 60)}.`]);
   if (S.roomOn && B.creditGrowthYTD() > B.room - 1) a.push(['warn', `Đã dùng gần hết room tín dụng ${B.room}% (${pp(B.creditGrowthYTD(), 1)}). Giải ngân mới bị chặn.`]);
   if (B.ibBorrow + B.refi > B.deposits() * 0.22) a.push(['warn', `Phụ thuộc liên ngân hàng/tái cấp vốn: ${fmt0(B.ibBorrow + B.refi)} tỷ (${pp((B.ibBorrow + B.refi) / B.deposits() * 100, 1)} tiền gửi). Rủi ro khi thị trường 2 đóng băng.`]);
   if (B.binds && B.binds.length) a.push(['info', `Tháng qua giải ngân ${fmt0(B.lastDisb || 0)} tỷ, bị giới hạn bởi: ${B.binds.join(', ')}.`]);
@@ -1626,7 +1653,7 @@ function balancePane(B) {
   return `${pick}<div class="grid g2">
     <div class="panel"><h2>Tài sản – ${fmt0(B.totalAssets())} tỷ</h2><div class="tw"><table><tr><th>Khoản mục</th><th class="r">Tỷ VND</th><th class="r">%TS</th></tr>
       ${row('Tiền mặt & tiền gửi thanh toán', B.cash)}${row('Dự trữ bắt buộc tại NHNN', B.reserve)}${row('Cho vay liên ngân hàng', B.ibLend)}${row('Trái phiếu Chính phủ (RW 0%)', B.gbonds)}
-      ${row('Cho vay khách hàng (gộp)', B.grossLoans())}${B.concentrated ? row('trong đó: khoản vay tập trung BĐS', B.concentrated, 'sub') : ''}${row('Dự phòng rủi ro tín dụng', -B.prov, 'sub')}${B.vamc ? row('Trái phiếu đặc biệt VAMC', B.vamc) : ''}${row('Tài sản cố định', B.fixed)}${row('Tài sản khác (phải thu, góp vốn, TPDN)', B.otherA || 0)}</table></div></div>
+      ${row('Cho vay khách hàng (gộp)', B.grossLoans())}${B.concentrated ? row('trong đó: khoản vay tập trung BĐS', B.concentrated, 'sub') : ''}${row('Dự phòng rủi ro tín dụng', -B.prov, 'sub')}${B.vamcFace ? row('Trái phiếu đặc biệt VAMC (dư nợ gốc còn thu hồi ' + fmt0(B.vamcFace) + ')', B.vamc) : ''}${row('Tài sản cố định', B.fixed)}${row('Tài sản khác (phải thu, góp vốn, TPDN)', B.otherA || 0)}</table></div></div>
     <div class="panel"><h2>Nguồn vốn</h2><div class="tw"><table><tr><th>Khoản mục</th><th class="r">Tỷ VND</th><th class="r">%TS</th></tr>
       ${row('Tiền gửi không kỳ hạn (CASA)', B.dep.casa)}${row('Tiền gửi < 6 tháng', B.dep.lt6)}${row('Tiền gửi 6–12 tháng', B.dep.m6_12)}${row('Tiền gửi ≥ 12 tháng', B.dep.gt12)}
       ${row('Giấy tờ có giá (3 năm)', B.bonds)}${row('Trái phiếu thứ cấp (vốn cấp 2)', B.subBonds)}${row('Vay liên ngân hàng', B.ibBorrow)}${row('Vay tái cấp vốn / OMO tại NHNN', B.refi)}${row('Vay nước ngoài & vay dài hạn TCTD (lãi ' + pp(B.wsRate || 0) + ')', B.wholesale || 0)}${row('Phải trả khác', B.other || 0)}
@@ -1653,6 +1680,7 @@ const ACT = {
   issue(B, pct, sub) { const e = B.issueBonds(B.totalAssets() * pct / 100, sub, W); if (e) toast(e); },
   raise(B, pct) { const e = B.raiseCapital(B.equity.charter * pct / 100, W); if (e) toast(e); },
   vamc(B) { const e = B.sellToVamc(W); if (e) toast(e); },
+  npmkt(B) { const e = B.sellNplMarket(W); if (e) toast(e); },
   anchor(B) { B.pol.anchor = !B.pol.anchor; if (B.pol.anchor) { const K = W.market; const ref = { rLt6: K.lt6, rM6_12: K.m6_12, rGt12: K.gt12, lendShort: K.lend - 1.0, lendMLT: K.lend + 0.5 }; for (const k in ref) B.pol.spread[k] = B.pol[k] - ref[k]; } B.addLog(W.month, `Neo lãi suất theo thị trường: ${B.pol.anchor ? 'bật' : 'tắt'}.`, ''); },
 };
 const RATE_NAMES = { rCasa: 'Lãi CASA', rLt6: 'Lãi huy động <6 tháng', rM6_12: 'Lãi huy động 6–12 tháng', rGt12: 'Lãi huy động ≥12 tháng', lendShort: 'Lãi cho vay ngắn hạn', lendMLT: 'Lãi cho vay trung dài hạn' };
@@ -1696,7 +1724,8 @@ function managePane(B) {
       ${arow('Giấy tờ có giá 3 năm', `lãi ~${pp(K.gt12 + 1 + B.healthSpread() * 0.5)}`, [1, 2, 5].map(x => ({ lbl: x + '% TS', act: 'issue', arg: [x, false] })), 'Tính vào nguồn TDH và mẫu số LDR')}
       ${arow('Trái phiếu cấp 2', `còn ${fmt0(Math.max(0, B.tier1() * 0.5 - B.subBonds))} tỷ dư địa`, [0.5, 1, 2].map(x => ({ lbl: x + '% TS', act: 'issue', arg: [x, true] })), 'Tăng vốn cấp 2, lãi cao hơn 1,5 điểm')}
       ${arow('Tăng vốn điều lệ', B.capitalRaisedThisYear ? 'đã dùng lượt năm nay' : 'một lần/năm', [10, 20, 40].map(x => ({ lbl: x + '% VĐL', act: 'raise', arg: x, disabled: B.capitalRaisedThisYear })), `Phí 2% · ${B.type === 'sob' ? 'cần Nhà nước duyệt (55%)' : 'cổ đông duyệt (85%)'}`)}
-      ${arow('Bán nợ nhóm 4–5 cho VAMC', `${fmt0(sum(SECTORS.map(s => B.book[s.id].g4 + B.book[s.id].g5)))} tỷ`, [{ lbl: 'Bán', act: 'vamc' }], 'Nợ xấu giảm ngay, trích 20%/năm')}
+      ${arow('Bán nợ cho VAMC', `${fmt0(B.vamcEligible().face)} tỷ đủ điều kiện`, [{ lbl: 'Bán', act: 'vamc', disabled: B.nplRatio() < 0.02 || W.month - B.vamcLast < 6 }], `Chỉ nợ có TSBĐ, ≤2% dư nợ/đợt, 6 tháng/đợt, khi nợ xấu ≥2%. Trái phiếu 0%, trích 20%/năm, tự thu hồi, nợ xấu gộp vẫn tính (hiện ${pp(B.nplGross() * 100)}), còn VAMC thì không chia cổ tức, sau 5 năm mua lại.`)}
+      ${arow('Bán nợ theo giá thị trường', `${fmt0(sum(SECTORS.map(s => B.book[s.id].g4 + B.book[s.id].g5)))} tỷ nhóm 4–5`, [{ lbl: 'Bán', act: 'npmkt' }], 'DATC/công ty mua bán nợ trả 25–55% mệnh giá: tiền mặt ngay, chênh lệch với dự phòng đã trích ghi lỗ ngay, sạch sổ thật.')}
     </div>
   </div>`;
 }
@@ -1705,7 +1734,7 @@ function bindManage(B) {
   $('#pane').querySelectorAll('[data-act]').forEach(btn => btn.onclick = () => {
     const a = btn.dataset.act, arg = JSON.parse(btn.dataset.arg || 'null');
     if (a === 'rate') ACT.rate(B, arg[0], arg[1]); else if (a === 'num') ACT.num(B, ...arg); else if (a === 'mix') ACT.mix(B, arg[0], arg[1]); else if (a === 'preset') ACT.preset(B, arg);
-    else if (a === 'issue') ACT.issue(B, arg[0], arg[1]); else if (a === 'raise') ACT.raise(B, arg); else if (a === 'vamc') ACT.vamc(B); else if (a === 'anchor') ACT.anchor(B);
+    else if (a === 'issue') ACT.issue(B, arg[0], arg[1]); else if (a === 'raise') ACT.raise(B, arg); else if (a === 'vamc') ACT.vamc(B); else if (a === 'npmkt') ACT.npmkt(B); else if (a === 'anchor') ACT.anchor(B);
     renderPane(); updateTop();
   });
 }
@@ -1792,12 +1821,12 @@ function bindSbv() {
 function mergeBank(src, dst) {
   for (const s of SECTORS) for (const k of ['perf', 'w', 'g3', 'g4', 'g5']) dst.book[s.id][k] += src.book[s.id][k];
   for (const k in dst.dep) dst.dep[k] += src.dep[k];
-  dst.cash += src.cash; dst.reserve += src.reserve; dst.ibLend += src.ibLend; dst.gbonds += src.gbonds; dst.fixed += src.fixed; dst.vamc += src.vamc; dst.prov += src.prov;
+  dst.cash += src.cash; dst.reserve += src.reserve; dst.ibLend += src.ibLend; dst.gbonds += src.gbonds; dst.fixed += src.fixed; dst.vamc += src.vamc; dst.vamcFace += src.vamcFace; dst.prov += src.prov;
   dst.bonds += src.bonds; dst.subBonds += src.subBonds; dst.ibBorrow += src.ibBorrow; dst.refi += src.refi; dst.concentrated += src.concentrated; dst.wholesale += src.wholesale; dst.other += src.other; dst.otherA += src.otherA;
   dst.equity.retained += src.totalEquity(); dst.loansAtYearStart += src.loansAtYearStart;
   src.dead = true; src.deadReason = 'chuyển giao bắt buộc'; src.announced = true;
   for (const s of SECTORS) src.book[s.id] = { perf: 0, w: 0, g3: 0, g4: 0, g5: 0 };
-  src.dep = { casa: 0, lt6: 0, m6_12: 0, gt12: 0 }; src.cash = 0; src.reserve = 0; src.ibLend = 0; src.gbonds = 0; src.fixed = 0; src.vamc = 0; src.prov = 0; src.bonds = 0; src.subBonds = 0; src.ibBorrow = 0; src.refi = 0; src.equity = { charter: 0, retained: 0 }; src.concentrated = 0; src.wholesale = 0; src.other = 0; src.otherA = 0;
+  src.dep = { casa: 0, lt6: 0, m6_12: 0, gt12: 0 }; src.cash = 0; src.reserve = 0; src.ibLend = 0; src.gbonds = 0; src.fixed = 0; src.vamc = 0; src.vamcFace = 0; src.prov = 0; src.bonds = 0; src.subBonds = 0; src.ibBorrow = 0; src.refi = 0; src.equity = { charter: 0, retained: 0 }; src.concentrated = 0; src.wholesale = 0; src.other = 0; src.otherA = 0;
 }
 
 /* ---------- Quyết định: khi chỉ số vượt ngưỡng hoặc sự kiện xảy ra, game dừng và đưa lựa chọn ---------- */
@@ -1823,10 +1852,11 @@ const DECISIONS = [
       { label: 'Phát hành giấy tờ có giá 3 năm bằng 3% tổng tài sản', apply: (W, B) => ACT.issue(B, 3, false) },
       { label: 'Giảm tỷ trọng BĐS 10 điểm, tăng doanh nghiệp', apply: (W, B) => { ACT.mix(B, 're', -0.1); ACT.mix(B, 'corp', 0.1); } },
       { label: 'Theo dõi thêm', apply: () => {} }] },
-  { id: 'npl', mode: 'bank', cool: 6, cond: (W, B) => B.nplRatio() > 0.03, title: 'Nợ xấu vượt 3%',
-    text: (W, B) => `Nợ xấu ${pp(B.nplRatio() * 100)}. Hệ quả: không được chia cổ tức tiền mặt, không được nới room, lãi vay liên ngân hàng bị cộng phụ trội. Dự phòng đã trích ${fmt0(B.prov)} tỷ.`,
+  { id: 'npl', mode: 'bank', cool: 6, cond: (W, B) => B.nplGross() > 0.03, title: 'Nợ xấu gộp vượt 3%',
+    text: (W, B) => `Nợ xấu nội bảng ${pp(B.nplRatio() * 100)}, gộp cả phần bán VAMC ${pp(B.nplGross() * 100)}. Hệ quả: không được chia cổ tức tiền mặt, không được nới room, lãi vay liên ngân hàng bị cộng phụ trội. Dự phòng đã trích ${fmt0(B.prov)} tỷ. Bán VAMC chỉ làm đẹp nội bảng: vẫn phải trích 20%/năm, tự thu hồi và bị tính nợ xấu gộp; muốn sạch thật phải xử lý bằng dự phòng, bán nợ chịu lỗ, hoặc ngừng tạo nợ xấu mới.`,
     options: [
-      { label: 'Bán nợ nhóm 4–5 cho VAMC', apply: (W, B) => ACT.vamc(B) },
+      { label: 'Bán nợ có TSBĐ cho VAMC (≤2% dư nợ, kéo dài chi phí 5 năm)', apply: (W, B) => ACT.vamc(B) },
+      { label: 'Bán nợ theo giá thị trường (tiền mặt ngay, lỗ ngay)', apply: (W, B) => ACT.npmkt(B) },
       { label: 'Siết khẩu vị rủi ro 1 bậc, giảm tiêu dùng 5 điểm', apply: (W, B) => { ACT.num(B, 'appetite', -1, 1, 5, 'Khẩu vị rủi ro'); ACT.mix(B, 'cons', -0.05); ACT.mix(B, 'corp', 0.05); } },
       { label: 'Tăng lãi cho vay 0,5 điểm để bù rủi ro', apply: (W, B) => { ACT.rate(B, 'lendShort', 0.5); ACT.rate(B, 'lendMLT', 0.5); } },
       { label: 'Theo dõi thêm', apply: () => {} }] },
@@ -2050,7 +2080,8 @@ function guidePane() {
       <li><b>Dự trữ thanh khoản ≥ 10%</b> tổng nợ phải trả: tiền mặt, DTBB, TPCP, cho vay liên NH.</li>
       <li><b>Trần lãi suất huy động dưới 6 tháng</b> (hiện 4,75%). Vượt là bị phạt. Trần lãi cho vay ngắn hạn lĩnh vực ưu tiên 4%.</li>
       <li><b>Room tín dụng</b>: NHNN cấp hạn mức tăng trưởng mỗi năm theo xếp hạng (CAR cao, nợ xấu thấp được nhiều). Vượt room bị phạt và cắt room năm sau. Giữa năm có thể được nới.</li>
-      <li><b>Phân loại nợ 5 nhóm và trích lập</b> (Thông tư 11/2021): nhóm 2: 5%, 3: 20%, 4: 50%, 5: 100% sau khấu trừ tài sản bảo đảm, cộng dự phòng chung 0,75%. Nợ xấu trên 3%: không chia cổ tức, không nới room.</li>
+      <li><b>Phân loại nợ 5 nhóm và trích lập</b> (Thông tư 11/2021): nhóm 2: 5%, 3: 20%, 4: 50%, 5: 100% sau khấu trừ tài sản bảo đảm, cộng dự phòng chung 0,75%. Nợ xấu gộp (kể cả phần bán VAMC) trên 3%: không chia cổ tức, không nới room.</li>
+      <li><b>Xử lý nợ xấu</b>: (1) dùng dự phòng xóa nợ nhóm 5, thu hồi tài sản bảo đảm dần; (2) bán cho VAMC: chỉ nợ có tài sản bảo đảm, tối đa 2% dư nợ mỗi đợt, 6 tháng một đợt, nhận trái phiếu đặc biệt lãi 0%, lỗ chiết khấu 5% ngay, trích 20% mệnh giá mỗi năm, vẫn tự thu hồi (nhanh hay chậm tùy thị trường BĐS), nợ xấu gộp vẫn bị NHNN tính khi cấp room và chặn cổ tức, sau 5 năm phải mua lại phần chưa xử lý; (3) bán nợ theo giá thị trường: thu 25–55% mệnh giá bằng tiền mặt ngay, phần chênh với dự phòng đã trích ghi lỗ ngay, sạch sổ thật; (4) ngừng tạo nợ xấu mới: siết khẩu vị, giảm tiêu dùng tín chấp và BĐS.</li>
       <li><b>Giới hạn cấp tín dụng một khách hàng</b> (Luật TCTD 2024): 14% vốn tự có, giảm dần về 10%. Xuất hiện trong sự kiện tập đoàn BĐS xin vay.</li>
     </ul>
     <h3>Cơ chế thanh khoản</h3>
