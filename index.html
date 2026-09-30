@@ -821,7 +821,7 @@ class World {
     for (let i = L - 23; i <= L; i++) this.macro.gap = MAC.gapDecay * this.macro.gap + (HIST.gdp[i] - MAC.gStar) / 12; // khoảng cách sản lượng tích lũy từ lịch sử
     this.us = { t: 38, period: 84 }; // chu kỳ Mỹ đang đi xuống: Fed vừa bắt đầu hạ lãi suất
     this.lastEv = {};
-    this.sbv = { refi: 4.5, disc: 3.0, omo: 4.0, depCap6m: 4.75, rrrShort: 3.0, rrrLong: 1.0, ldrMax: 85, mltMax: 30, carMin: 8, roomOn: true, sysRoom: 16, forbearance: false, omoNet: 0, fxSell: 0, fxSpot: 0, ops: [], bill: 3.5 };
+    this.sbv = { refi: 4.5, disc: 3.0, omo: 4.0, depCap6m: 4.75, rrrShort: 3.0, rrrLong: 1.0, ldrMax: 85, mltMax: 30, carMin: 8, roomOn: true, sysRoom: 16, forbearance: false, omoNet: 0, fxSell: 0, fxSpot: 0, ops: [], bill: 3.5, stance: 0, fxStance: 'none' };
     this.sbv.refi = HIST.refi[HIST_N - 1]; this.sbv.omo = this.sbv.refi - 0.5; this.sbv.disc = this.sbv.refi - 1.5; this.sbv.bill = this.sbv.refi - 1.0;
     this.market = {};
     this.shocks = []; this.log = []; this.eventQueue = [];
@@ -958,7 +958,7 @@ class World {
   }
   recomputeOmo() { const S = this.sbv; S.omoNet = sum(S.ops.filter(o => o.kind === 'inject').map(o => o.amt)) - sum(S.ops.filter(o => o.kind === 'absorb').map(o => o.amt)); }
   processOps() { // nghiệp vụ OMO/tín phiếu theo kỳ hạn & đảo hạn, forward USD đáo hạn
-    const S = this.sbv, M = this.macro; S.fxSell = S.fxSpot || 0; S.fxSpot = 0;
+    const S = this.sbv, M = this.macro; if (typeof SBV !== 'undefined') SBV.autoFx(); S.fxSell = S.fxSpot || 0; S.fxSpot = 0;
     for (const op of S.ops) {
       if (op.kind === 'fwd') { M.fx -= op.amt * 0.08; op.left -= 1;
         if (op.left <= 0) { const cancel = M.fx < (op.prem ?? 0.5) * 2.5 ? 0.5 : 0; const settle = op.amt * (1 - cancel); M.reserves -= settle; S.fxSell += settle * 25000; op.done = true;
@@ -966,7 +966,7 @@ class World {
           if (op.roll > 0 && op.amt * op.roll >= 0.5) S.ops.push({ id: Date.now() + Math.random(), kind: 'fwd', amt: op.amt * op.roll, tenor: op.tenor, left: op.tenor, roll: op.roll, start: this.month }); } }
       else { op.left -= 30; while (op.left <= 0 && op.amt >= 1) { op.amt *= op.roll; op.left += op.tenor; } if (op.amt < 1) { op.done = true; this.addLog(`${op.kind === 'inject' ? 'OMO bơm' : 'Tín phiếu'} kỳ hạn ${op.tenor} ngày đã tất toán hết.`, ''); } }
     }
-    S.ops = S.ops.filter(o => !o.done); this.recomputeOmo();
+    S.ops = S.ops.filter(o => !o.done); this.recomputeOmo(); if (typeof SBV !== 'undefined') SBV.autoLiq();
   }
   /* --- NHNN tự động (ở chế độ chơi ngân hàng) --- */
   sbvAuto() {
@@ -1032,7 +1032,7 @@ class World {
       inspect: (m === 3 || m === 9) ? 0.5 : 0.01,
       support: M.gdp < 6 ? 0.06 : 0,
       casa: P && P.pol.digital >= 2 ? 0.03 : 0,
-      cyber: 0.012 * ex,
+      cyber: P ? 0.012 * ex : 0,
       bigdeal: P && M.re > 1.0 && P.concentrated === 0 ? 0.03 : 0,
       bigdefault: P && P.concentrated > 0 ? (M.re < 0.75 || this.shocks.some(x => /TPDN/.test(x.name)) ? 0.35 : 0.015) : 0,
       fedhike: m % 3 === 0 && this.us.target > M.fedRate + 0.3 ? 1 : 0,
@@ -1750,24 +1750,42 @@ function bindManage(B) {
 }
 
 /* ---------- Công cụ NHNN: chính sách bằng nút, nghiệp vụ OMO có kỳ hạn & đảo hạn, can thiệp tỷ giá ---------- */
-const sbvUI = { tenor: 7, roll: 1, amt: 50000, usd: 2, fwdM: 3, fwdRoll: 0 };
 const SBV = {
   rate(d) { const S = W.sbv; S.refi = +clamp(S.refi + d, 1, 12).toFixed(2); S.omo = +clamp(S.omo + d, 0.5, 11).toFixed(2); S.disc = +clamp(S.disc + d, 0.5, 10).toFixed(2); S.bill = +clamp(S.bill + d, 0.1, 15).toFixed(2); W.addLog(`NHNN ${d > 0 ? 'tăng' : 'giảm'} lãi suất điều hành ${Math.abs(d).toFixed(2).replace('.', ',')} điểm: tái cấp vốn ${pp(S.refi)}, OMO ${pp(S.omo)}.`, d > 0 ? 'warn' : 'good'); },
   set(k, d, lo, hi, name) { const S = W.sbv; S[k] = +clamp(S[k] + d, lo, hi).toFixed(2); W.addLog(`${name}: ${String(S[k]).replace('.', ',')}.`, ''); },
   toggle(k, name) { const S = W.sbv; S[k] = !S[k]; if (k === 'forbearance') W.forbearanceLeft = 0; W.addLog(`${name}: ${S[k] ? 'áp dụng' : 'bỏ'}.`, 'warn'); },
   omo(kind, amt, tenor, roll, rate) { const S = W.sbv; if (rate == null) rate = kind === 'inject' ? S.omo : S.bill; rate = +clamp(rate, 0.1, 15).toFixed(2); if (kind === 'inject') S.omo = rate; else S.bill = rate;
     S.ops.push({ id: Date.now() + Math.random(), kind, amt, tenor, roll, rate, left: tenor, start: W.month }); W.addLog(`${kind === 'inject' ? 'OMO bơm (mua kỳ hạn TPCP)' : 'Phát hành tín phiếu hút'} ${fmt0(amt)} tỷ, kỳ hạn ${tenor} ngày, lãi suất ${pp(rate)}, đảo hạn ${Math.round(roll * 100)}%.`, kind === 'inject' ? 'good' : 'warn'); W.recomputeOmo(); },
-  askOmo(kind, amt, tenor, roll) { // mỗi đợt phát hành hỏi lãi suất
-    const S = W.sbv; const base = kind === 'inject' ? S.omo : S.bill; const name = kind === 'inject' ? 'OMO bơm' : 'tín phiếu';
-    const mk = d => ({ label: d === 0 ? `Giữ ${pp(base)}` : `${d > 0 ? 'Tăng lên' : 'Giảm xuống'} ${pp(base + d)} (${d > 0 ? '+' : ''}${d.toFixed(2).replace('.', ',')})`, apply: () => { SBV.omo(kind, amt, tenor, roll, base + d); renderPane(); updateTop(); } });
-    showModal(`Đợt ${name} ${fmt0(amt)} tỷ, ${tenor} ngày, đảo hạn ${Math.round(roll * 100)}%`, `Lãi suất đợt này? ${kind === 'inject' ? 'Lãi bơm cao thì ngân hàng chỉ vay khi thật thiếu, thấp thì thị trường hạ nhiệt nhanh nhưng dễ dư tiền.' : 'Lãi tín phiếu cao hút mạnh, đẩy lãi liên ngân hàng lên (bảo vệ tỷ giá) nhưng tốn chi phí và siết tín dụng.'} Liên ngân hàng hiện ${pp(W.market.ibON)}, tái cấp vốn ${pp(S.refi)}.`, [mk(0), mk(0.25), mk(0.5), mk(-0.25), mk(-0.5)]);
-  },
-  spot(usd) { const S = W.sbv, M = W.macro; if (M.reserves < usd) { toast('Dự trữ không đủ.'); return; } M.reserves -= usd; M.fx -= usd * 0.3; S.fxSpot = (S.fxSpot || 0) + usd * 25000; W.addLog(`Bán giao ngay ${usd} tỷ USD can thiệp: dự trữ còn ${fmt1(M.reserves)} tỷ USD, hút ${fmt0(usd * 25000)} tỷ VND.`, 'warn'); },
-  fwd(usd, months, roll, prem = 0.5) { const S = W.sbv, M = W.macro; S.ops.push({ id: Date.now() + Math.random(), kind: 'fwd', amt: usd, tenor: months, left: months, roll, prem, start: W.month }); M.fx -= usd * (0.16 - prem * 0.08); W.addLog(`Bán kỳ hạn ${usd} tỷ USD, ${months} tháng, tỷ giá kỳ hạn cao hơn giao ngay ${prem.toFixed(1).replace('.', ',')}%${roll ? ', tự gia hạn' : ''}: hạ nhiệt kỳ vọng ngay, dự trữ chỉ giảm khi đáo hạn (ngân hàng được hủy nếu VND đã ổn định).`, 'warn'); },
-  askFwd(usd, months, roll) {
-    const mk = prem => ({ label: prem === 0 ? 'Bằng giá giao ngay (hạ nhiệt mạnh, dễ bị hủy)' : `Cao hơn giao ngay ${prem.toFixed(1).replace('.', ',')}%${prem >= 1 ? ' (ít hấp dẫn, giữ dự trữ)' : ''}`, apply: () => { SBV.fwd(usd, months, roll, prem); renderPane(); updateTop(); } });
-    showModal(`Bán kỳ hạn ${usd} tỷ USD, ${months} tháng`, `Đặt tỷ giá kỳ hạn so với giao ngay. Điểm kỳ hạn thấp thì ngân hàng mua nhiều, tỷ giá hạ nhanh nhưng đến hạn dễ hủy nếu VND ổn định (không mất dự trữ). VND đang mất giá ${pp(W.macro.fx, 1)}/năm.`, [mk(0.5), mk(0), mk(1.0), mk(1.5)]);
-  },
+  /* --- Điều hành theo hướng: người chơi chọn hướng, lượng và bước do thị trường quyết --- */
+  rateStep(dir) { const gap = (W.macro.taylor ?? W.sbv.refi) - W.sbv.refi; return Math.sign(gap) === dir ? clamp(Math.round(Math.abs(gap) * 0.5 / 0.25) * 0.25, 0.25, 1.0) : 0.25; },
+  rateDir(dir) { const d = SBV.rateStep(dir) * dir; SBV.rate(d); const S = W.sbv; S.depCap6m = +clamp(S.depCap6m + d, 3, 8).toFixed(2); W.addLog(`Bước ${Math.abs(d).toFixed(2).replace('.', ',')} điểm lấy bằng một nửa khoảng cách tới quy tắc Taylor (${pp(W.macro.taylor ?? S.refi)}), tối thiểu 0,25, tối đa 1,0; trần huy động <6 tháng đi theo tới ${pp(S.depCap6m)}.`, ''); },
+  ibTarget(st) { const S = W.sbv, M = W.macro; return st > 0 ? Math.max(S.omo + 1.0, M.fedRate + 0.5) : st < 0 ? Math.max(0.5, S.omo - 0.4) : S.omo; },
+  liqSize(st) { // lượng hút/bơm cần để đưa lãi liên ngân hàng về mục tiêu; hiệu ứng: 1 điểm ≈ 2,5% tiền gửi hệ thống
+    if (!st) return 0; const sysDep = W.sysDeposits(); const gap = SBV.ibTarget(st) - W.market.ibON;
+    if ((st > 0 && gap <= 0.1) || (st < 0 && gap >= -0.1)) return 0;
+    if (st < 0 && W.tightness <= -0.75) return 0; // thị trường đã thừa tiền, bơm thêm không hạ được lãi
+    if (st > 0 && W.tightness >= 3.9) return 0;
+    return Math.round(clamp(Math.abs(gap) * sysDep / 40, 10000, sysDep * 0.02) / 5000) * 5000; },
+  stance(st) { const S = W.sbv; S.stance = st;
+    if (st === 0) { for (const o of S.ops) if (o.kind !== 'fwd') o.roll = 0; W.addLog('Thanh khoản: trung tính. Các đợt OMO và tín phiếu không đảo hạn nữa, tất toán dần khi đáo hạn.', ''); }
+    else { const amt = SBV.liqSize(st); W.addLog(`Thanh khoản: ${st > 0 ? 'hút ròng' : 'bơm ròng'}. Mục tiêu lãi liên ngân hàng ≈ ${pp(SBV.ibTarget(st))} (hiện ${pp(W.market.ibON)}, Fed ${pp(W.macro.fedRate)}). ${amt ? `Tháng tới engine tự ${st > 0 ? 'hút' : 'bơm'} khoảng ${fmt0(amt)} tỷ.` : 'Lãi liên ngân hàng đã ở mục tiêu, chưa cần phát hành.'}`, st > 0 ? 'warn' : 'good'); } },
+  autoLiq() { const S = W.sbv, st = S.stance || 0; if (!st) { S.lastLiq = 0; return; }
+    for (const o of S.ops) if (o.kind === 'absorb' && o.roll > 0 && st > 0) o.rate = +(SBV.ibTarget(1) + 0.25).toFixed(2); // đợt đảo hạn định giá lại theo mục tiêu hiện hành
+    let amt = SBV.liqSize(st); S.lastLiq = amt; if (!amt) return;
+    const opp = st > 0 ? 'inject' : 'absorb'; let cutTot = 0;
+    for (const o of S.ops) { if (o.kind !== opp || amt <= 0) continue; const cut = Math.min(o.amt, amt); o.amt -= cut; amt -= cut; cutTot += cut; o.roll = 0; if (o.amt < 1) o.done = true; }
+    if (cutTot) W.addLog(`Thu hồi sớm ${fmt0(cutTot)} tỷ ${opp === 'inject' ? 'OMO bơm' : 'tín phiếu'} thay vì phát hành ngược chiều.`, '');
+    S.ops = S.ops.filter(o => !o.done);
+    if (amt >= 5000) { if (st > 0) SBV.omo('absorb', amt, 28, 1, SBV.ibTarget(st) + 0.25); else SBV.omo('inject', amt, 7, 1, S.omo); } else W.recomputeOmo(); },
+  fxSize(kind) { const M = W.macro; const gap = M.fx - 2.5; if (gap <= 0.3) return 0;
+    if (kind === 'spot') return Math.round(clamp(gap / 0.3 * 0.6, 0, Math.min(10, M.reserves * 0.08)) * 2) / 2;
+    const open = sum(W.sbv.ops.filter(o => o.kind === 'fwd').map(o => o.amt)); // forward còn treo vẫn đang ép tỷ giá xuống
+    return Math.round(clamp(gap / 0.16 * 0.6 - open * 0.5, 0, Math.min(12, M.reserves * 0.12)) * 2) / 2; },
+  fxStance(kind) { const S = W.sbv; S.fxStance = kind; const usd = SBV.fxSize(kind);
+    W.addLog(kind === 'none' ? 'Tỷ giá: không can thiệp, để thị trường tự điều chỉnh.' : `Tỷ giá: ${kind === 'spot' ? 'bán USD giao ngay' : 'bán USD kỳ hạn 3 tháng'} khi VND mất giá trên 2,5%/năm; lượng do engine tính theo mức vượt. ${usd >= 0.5 ? `Tháng tới dự kiến bán ${fmt1(usd)} tỷ USD.` : 'VND đang trong vùng an toàn, chưa cần bán.'}`, kind === 'none' ? '' : 'warn'); },
+  autoFx() { const S = W.sbv, k = S.fxStance || 'none'; if (k === 'none') { S.lastFx = 0; return; } const usd = SBV.fxSize(k); S.lastFx = usd; if (usd < 0.5) return; if (k === 'spot') SBV.spot(usd); else SBV.fwd(usd, 3, 0, 0.5); },
+  spot(usd) { const S = W.sbv, M = W.macro; if (M.reserves < usd) { toast('Dự trữ không đủ.'); return; } M.reserves -= usd; M.fx -= usd * 0.3; S.fxSpot = (S.fxSpot || 0) + usd * 25000; W.addLog(`Bán giao ngay ${fmt1(usd)} tỷ USD can thiệp: dự trữ còn ${fmt1(M.reserves)} tỷ USD, hút ${fmt0(usd * 25000)} tỷ VND.`, 'warn'); },
+  fwd(usd, months, roll, prem = 0.5) { const S = W.sbv, M = W.macro; S.ops.push({ id: Date.now() + Math.random(), kind: 'fwd', amt: usd, tenor: months, left: months, roll, prem, start: W.month }); M.fx -= usd * (0.16 - prem * 0.08); W.addLog(`Bán kỳ hạn ${fmt1(usd)} tỷ USD, ${months} tháng, tỷ giá kỳ hạn cao hơn giao ngay ${prem.toFixed(1).replace('.', ',')}%${roll ? ', tự gia hạn' : ''}: hạ nhiệt kỳ vọng ngay, dự trữ chỉ giảm khi đáo hạn (ngân hàng được hủy nếu VND đã ổn định).`, 'warn'); },
   stopRoll(id) { const op = W.sbv.ops.find(o => o.id === id); if (op) { op.roll = 0; W.addLog('Dừng đảo hạn một nghiệp vụ; sẽ tất toán khi đáo hạn.', ''); } },
   weak(action, i) { const b = W.banks[i]; if (!b) return;
     if (action === 'refi') { const a = b.totalAssets() * 0.03; b.cash += a; b.refi += a; b.refiRate = 0; b.reputation = Math.min(0, b.reputation + 1); W.macro.cpi += 0.05; b.addLog(W.month, `NHNN tái cấp vốn đặc biệt ${fmt0(a)} tỷ.`, 'good'); W.addLog(`Tái cấp vốn đặc biệt ${fmt0(a)} tỷ cho ${b.name}.`, 'warn'); }
@@ -1776,29 +1794,24 @@ const SBV = {
   },
 };
 function sbvPane() {
-  const S = W.sbv, M = W.macro, K = W.market; const u = sbvUI;
+  const S = W.sbv, M = W.macro, K = W.market; const st = S.stance || 0, fs = S.fxStance || 'none'; const liqPlan = SBV.liqSize(st), fxPlan = SBV.fxSize(fs); const rUp = SBV.rateStep(1), rDn = SBV.rateStep(-1);
   const pol = (k, name, d, lo, hi, cur, hint) => arow(name, cur, [{ lbl: '−' + String(d).replace('.', ','), act: 'set', arg: [k, -d, lo, hi, name] }, { lbl: '+' + String(d).replace('.', ','), act: 'set', arg: [k, d, lo, hi, name] }], hint);
-  const seg = (key, opts, fmtf) => `<div class="seg">${opts.map(o => `<button class="btn small ${u[key] === o ? 'primary' : ''}" data-ui="${key}" data-val="${o}">${fmtf(o)}</button>`).join('')}</div>`;
+  const seg = (act, opts, cur, fmtf) => `<div class="seg">${opts.map(o => `<button class="btn small ${cur === o ? 'primary' : ''}" data-act="${act}" data-arg='${JSON.stringify(o)}'>${fmtf(o)}</button>`).join('')}</div>`;
   const opsRows = S.ops.length ? S.ops.map(o => `<tr><td>${o.kind === 'inject' ? 'OMO bơm' : o.kind === 'absorb' ? 'Tín phiếu hút' : 'Forward bán USD'}</td><td class="r">${o.kind === 'fwd' ? fmt1(o.amt) + ' tỷ USD' : fmt0(o.amt) + ' tỷ'}<br><span class="muted">${o.kind === 'fwd' ? 'điểm KH +' + (o.prem ?? 0.5).toFixed(1).replace('.', ',') + '%' : 'lãi ' + pp(o.rate ?? S.omo)}</span></td><td class="r">${o.kind === 'fwd' ? o.tenor + ' tháng' : o.tenor + ' ngày'}</td><td class="r">${o.kind === 'fwd' ? o.left + ' tháng' : Math.max(0, o.left) + ' ngày'}</td><td class="r">${Math.round(o.roll * 100)}%</td><td>${o.roll > 0 ? `<button class="btn small" data-act="stop" data-arg='${JSON.stringify(o.id)}'>Dừng đảo hạn</button>` : ''}</td></tr>`).join('') : '<tr><td colspan="6" class="muted">Chưa có nghiệp vụ nào đang mở.</td></tr>';
   return `<div class="grid g2">
-    <div class="panel"><h2>Nghiệp vụ thị trường mở (OMO)</h2>
-      <p class="small muted">Bơm = mua kỳ hạn TPCP (reverse repo), hút = phát hành tín phiếu. Đến hạn thì tiền quay về, trừ phần được đảo hạn. Kỳ hạn ngắn linh hoạt, kỳ hạn dài neo lãi suất lâu hơn. Đang bơm ròng <b>${fmt0(S.omoNet)}</b> tỷ · LS liên NH ${pp(K.ibON)} · độ căng ${fmt1(W.tightness)}.</p>
-      <div class="arow"><div class="al"><span class="lbl">Kỳ hạn</span></div>${seg('tenor', [7, 14, 28, 91], o => o + ' ngày')}</div>
-      <div class="arow"><div class="al"><span class="lbl">Tỷ lệ đảo hạn khi đến hạn</span></div>${seg('roll', [0, 0.5, 1], o => Math.round(o * 100) + '%')}</div>
-      <div class="arow"><div class="al"><span class="lbl">Quy mô</span></div>${seg('amt', [20000, 50000, 100000, 200000], o => fmt0(o / 1000) + 'k tỷ')}</div>
-      <p class="small muted">Lãi suất đợt gần nhất: OMO bơm <b>${pp(S.omo)}</b> · tín phiếu <b>${pp(S.bill)}</b>. Mỗi đợt phát hành sẽ hỏi giữ, tăng hay giảm lãi suất; lãi bơm là trần mềm, lãi tín phiếu là sàn mềm của liên ngân hàng.</p>
-      <div class="abtns wrap"><button class="btn primary" data-act="omo" data-arg='"inject"'>▲ Bơm ${fmt0(u.amt)} tỷ, ${u.tenor} ngày</button><button class="btn" data-act="omo" data-arg='"absorb"'>▼ Hút ${fmt0(u.amt)} tỷ, ${u.tenor} ngày</button></div>
+    <div class="panel"><h2>Thanh khoản: OMO & tín phiếu</h2>
+      <p class="small muted">Chỉ chọn hướng, engine tự tính lượng mỗi tháng để đưa lãi liên ngân hàng về mục tiêu. Hút ròng: mục tiêu = max(lãi OMO + 1, Fed + 0,5) để giữ chênh lệch lãi VND–USD dương. Bơm ròng: mục tiêu = lãi OMO − 0,4. Bơm bằng mua kỳ hạn 7 ngày tại lãi OMO, hút bằng tín phiếu 28 ngày tại lãi mục tiêu; đảo hạn khi còn giữ hướng, tất toán dần khi về trung tính. Đang bơm ròng <b>${fmt0(S.omoNet)}</b> tỷ · liên NH ${pp(K.ibON)} · Fed ${pp(M.fedRate)} · chênh lệch ${pp(K.ibON - M.fedRate, 1)} · độ căng ${fmt1(W.tightness)}.</p>
+      <div class="arow"><div class="al"><span class="lbl">Hướng điều hành</span><span class="hint">${st === 0 ? 'Trung tính' : st > 0 ? 'Hút ròng, mục tiêu liên NH ≈ ' + pp(SBV.ibTarget(1)) : 'Bơm ròng, mục tiêu liên NH ≈ ' + pp(SBV.ibTarget(-1))}</span></div>${seg('stance', [-1, 0, 1], st, o => o < 0 ? '▲ Bơm ròng' : o > 0 ? '▼ Hút ròng' : 'Trung tính')}</div>
+      <p class="small">${st ? (liqPlan ? `Tháng tới engine tự ${st > 0 ? 'hút' : 'bơm'} khoảng <b>${fmt0(liqPlan)}</b> tỷ (${pp(liqPlan / Math.max(1, W.sysDeposits()) * 100, 2)} tiền gửi hệ thống), tối đa 2% tiền gửi mỗi tháng.` : 'Lãi liên ngân hàng đã ở mục tiêu, tháng tới không phát hành thêm.') : 'Không phát hành mới; các đợt đang mở tất toán khi đáo hạn.'}</p>
     </div>
     <div class="panel"><h2>Can thiệp tỷ giá</h2>
-      <p class="small muted">Giao ngay: bán USD từ dự trữ, hút VND ngay, tỷ giá hạ ngay. Kỳ hạn: cam kết bán USD sau 3–6 tháng, hạ nhiệt kỳ vọng mà chưa tốn dự trữ; đến hạn mới giao USD, ngân hàng được hủy một nửa nếu VND đã ổn định. Dự trữ <b>${fmt1(M.reserves)}</b> tỷ USD · VND mất giá ${pp(M.fx, 1)}/năm · Fed ${pp(M.fedRate)}.</p>
-      <div class="arow"><div class="al"><span class="lbl">Quy mô</span></div>${seg('usd', [1, 2, 5, 10], o => o + ' tỷ USD')}</div>
-      <div class="arow"><div class="al"><span class="lbl">Kỳ hạn forward</span></div>${seg('fwdM', [3, 6], o => o + ' tháng')}</div>
-      <div class="arow"><div class="al"><span class="lbl">Tự gia hạn forward</span></div>${seg('fwdRoll', [0, 1], o => o ? 'Có' : 'Không')}</div>
-      <div class="abtns wrap"><button class="btn primary" data-act="spot">Bán giao ngay ${u.usd} tỷ USD</button><button class="btn" data-act="fwd">Bán kỳ hạn ${u.usd} tỷ USD, ${u.fwdM} tháng</button></div>
+      <p class="small muted">Chọn cách can thiệp, lượng do engine tính theo mức VND mất giá vượt 2,5%/năm. Giao ngay: bán USD từ dự trữ, hút VND ngay, tỷ giá hạ ngay (tối đa 10 tỷ USD hoặc 8% dự trữ mỗi tháng). Kỳ hạn 3 tháng: hạ nhiệt kỳ vọng mà chưa tốn dự trữ, đến hạn mới giao USD, ngân hàng được hủy một nửa nếu VND đã ổn định. Dự trữ <b>${fmt1(M.reserves)}</b> tỷ USD · VND mất giá ${pp(M.fx, 1)}/năm · USD/VND ${fmt0(M.usd)}.</p>
+      <div class="arow"><div class="al"><span class="lbl">Cách can thiệp</span><span class="hint">${fs === 'none' ? 'Không can thiệp' : fs === 'spot' ? 'Bán giao ngay khi cần' : 'Bán kỳ hạn khi cần'}</span></div>${seg('fxs', ['none', 'spot', 'fwd'], fs, o => o === 'none' ? 'Không can thiệp' : o === 'spot' ? 'Bán giao ngay' : 'Bán kỳ hạn 3 tháng')}</div>
+      <p class="small">${fs === 'none' ? 'Thị trường tự điều chỉnh; dự trữ chỉ đổi theo cán cân thanh toán.' : fxPlan >= 0.5 ? `Tháng tới dự kiến bán <b>${fmt1(fxPlan)}</b> tỷ USD ${fs === 'spot' ? 'giao ngay' : 'kỳ hạn'}.` : 'VND đang trong vùng an toàn, tháng tới không bán.'}</p>
     </div>
     <div class="panel" style="grid-column:1/-1"><h2>Nghiệp vụ đang mở</h2><div class="tw"><table><tr><th>Loại</th><th class="r">Số dư</th><th class="r">Kỳ hạn</th><th class="r">Còn lại</th><th class="r">Đảo hạn</th><th></th></tr>${opsRows}</table></div></div>
     <div class="panel"><h2>Lãi suất điều hành & trần</h2>
-      ${arow('Lãi suất điều hành', `${pp(S.refi)} / ${pp(S.omo)} / ${pp(S.disc)}`, [{ lbl: '−0,25', act: 'rate', arg: -0.25 }, { lbl: '+0,25', act: 'rate', arg: 0.25 }, { lbl: '+1,00', act: 'rate', arg: 1 }], 'Tái cấp vốn / OMO / tái chiết khấu · neo lãi huy động thị trường')}
+      ${arow('Lãi suất điều hành', `${pp(S.refi)} / ${pp(S.omo)} / ${pp(S.disc)}`, [{ lbl: `Giảm (−${rDn.toFixed(2).replace('.', ',')})`, act: 'rateDir', arg: -1 }, { lbl: `Tăng (+${rUp.toFixed(2).replace('.', ',')})`, act: 'rateDir', arg: 1 }], `Tái cấp vốn / OMO / tái chiết khấu · bước = nửa khoảng cách tới Taylor ${pp(M.taylor ?? S.refi)}, trần huy động đi theo`)}
       ${pol('depCap6m', 'Trần lãi huy động <6 tháng', 0.25, 3, 8, pp(S.depCap6m), 'Ngăn đua lãi suất')}
       ${pol('rrrShort', 'Dự trữ bắt buộc <12 tháng', 0.5, 0, 10, pp(S.rrrShort), '+1 điểm ≈ hút 1% tiền gửi')}
       ${pol('rrrLong', 'Dự trữ bắt buộc ≥12 tháng', 0.5, 0, 5, pp(S.rrrLong), '')}
@@ -1819,11 +1832,10 @@ function sbvPane() {
 }
 function bindSbv() {
   const pane = $('#pane');
-  pane.querySelectorAll('[data-ui]').forEach(b => b.onclick = () => { sbvUI[b.dataset.ui] = +b.dataset.val; renderPane(); });
   pane.querySelectorAll('[data-act]').forEach(btn => btn.onclick = () => {
-    const a = btn.dataset.act, arg = JSON.parse(btn.dataset.arg || 'null'); const u = sbvUI;
-    if (a === 'rate') SBV.rate(arg); else if (a === 'set') SBV.set(...arg); else if (a === 'toggle') SBV.toggle(arg[0], arg[1]);
-    else if (a === 'omo') { SBV.askOmo(arg, u.amt, u.tenor, u.roll); return; } else if (a === 'spot') SBV.spot(u.usd); else if (a === 'fwd') { SBV.askFwd(u.usd, u.fwdM, u.fwdRoll); return; } else if (a === 'stop') SBV.stopRoll(arg);
+    const a = btn.dataset.act, arg = JSON.parse(btn.dataset.arg || 'null');
+    if (a === 'rateDir') SBV.rateDir(arg); else if (a === 'set') SBV.set(...arg); else if (a === 'toggle') SBV.toggle(arg[0], arg[1]);
+    else if (a === 'stance') SBV.stance(arg); else if (a === 'fxs') SBV.fxStance(arg); else if (a === 'stop') SBV.stopRoll(arg);
     else if (a === 'weak') SBV.weak(arg, +$('#weakBank').value);
     renderPane(); updateTop();
   });
@@ -1903,44 +1915,42 @@ const DECISIONS = [
     text: W => `Quy tắc Taylor gợi ý ${pp(W.macro.taylor ?? W.sbv.refi)} (lạm phát ${pp(W.macro.cpi, 1)}, khoảng cách sản lượng ${(W.macro.gap ?? 0).toFixed(2).replace('.', ',')}, thất nghiệp ${pp(W.macro.u ?? 0, 2)}). Tái cấp vốn ${pp(W.sbv.refi)}, OMO ${pp(W.sbv.omo)}, tín phiếu ${pp(W.sbv.bill)}, trần huy động <6 tháng ${pp(W.sbv.depCap6m)}. CPI ${pp(W.macro.cpi, 1)}, GDP ${pp(W.macro.gdp, 1)}, VND mất giá ${pp(W.macro.fx, 1)}, liên ngân hàng ${pp(W.market.ibON)}, tín dụng ${pp(W.sysCreditGrowthAnn, 1)}.`,
     options: [
       { label: 'Giữ nguyên bộ lãi suất', apply: () => {} },
-      { label: 'Tăng lãi suất điều hành 0,25 điểm (TCV, OMO, TCK)', apply: W => SBV.rate(0.25) },
-      { label: 'Tăng 0,5 điểm và nâng trần huy động 0,5', apply: W => { SBV.rate(0.5); SBV.set('depCap6m', 0.5, 3, 8, 'Trần lãi huy động <6 tháng'); } },
-      { label: 'Giảm lãi suất điều hành 0,25 điểm', apply: W => SBV.rate(-0.25) },
-      { label: 'Giảm 0,5 điểm và hạ trần huy động 0,5', apply: W => { SBV.rate(-0.5); SBV.set('depCap6m', -0.5, 3, 8, 'Trần lãi huy động <6 tháng'); } }] },
+      { label: W => `Tăng lãi suất điều hành (+${SBV.rateStep(1).toFixed(2).replace('.', ',')} theo Taylor)`, apply: W => SBV.rateDir(1) },
+      { label: W => `Giảm lãi suất điều hành (−${SBV.rateStep(-1).toFixed(2).replace('.', ',')} theo Taylor)`, apply: W => SBV.rateDir(-1) }] },
   { id: 's_cpi', mode: 'sbv', cool: 4, cond: W => W.macro.cpi > 4.5, title: 'Lạm phát vượt mục tiêu 4,5%',
     text: W => `CPI ${pp(W.macro.cpi, 1)}, tín dụng ${pp(W.sysCreditGrowthAnn, 1)}, lãi liên ngân hàng ${pp(W.market.ibON)}.`,
     options: [
-      { label: 'Tăng lãi suất điều hành 0,5 điểm', apply: W => SBV.rate(0.5) },
-      { label: 'Hút 100 nghìn tỷ tín phiếu 28 ngày, lãi tín phiếu +0,5', apply: W => SBV.omo('absorb', 100000, 28, 1, W.sbv.bill + 0.5) },
+      { label: W => `Tăng lãi suất điều hành (+${SBV.rateStep(1).toFixed(2).replace('.', ',')} theo Taylor)`, apply: W => SBV.rateDir(1) },
+      { label: W => `Hút ròng (engine tự tính, tháng tới ≈ ${fmt0(SBV.liqSize(1))} tỷ, mục tiêu liên NH ${pp(SBV.ibTarget(1))})`, apply: W => SBV.stance(1) },
       { label: 'Cắt room tín dụng hệ thống 2 điểm', apply: W => { W.sbv.sysRoom = Math.max(5, W.sbv.sysRoom - 2); for (const b of W.banks) b.room = Math.max(0, b.room - 2); W.addLog('Siết room tín dụng 2 điểm % để chống lạm phát.', 'warn'); } },
       { label: 'Chưa làm gì', apply: () => {} }] },
   { id: 's_slow', mode: 'sbv', cool: 4, cond: W => W.macro.gdp < 6 && W.macro.cpi < 3.5, title: 'Tăng trưởng yếu, lạm phát thấp',
     text: W => `GDP ${pp(W.macro.gdp, 1)}, CPI ${pp(W.macro.cpi, 1)}, tín dụng ${pp(W.sysCreditGrowthAnn, 1)}. Có dư địa nới lỏng nếu tỷ giá cho phép (VND mất giá ${pp(W.macro.fx, 1)}).`,
     options: [
-      { label: 'Giảm lãi suất điều hành 0,5 điểm', apply: W => SBV.rate(-0.5) },
-      { label: 'Bơm 100 nghìn tỷ OMO 91 ngày, lãi OMO −0,25', apply: W => SBV.omo('inject', 100000, 91, 1, W.sbv.omo - 0.25) },
+      { label: W => `Giảm lãi suất điều hành (−${SBV.rateStep(-1).toFixed(2).replace('.', ',')} theo Taylor)`, apply: W => SBV.rateDir(-1) },
+      { label: W => `Bơm ròng (engine tự tính, tháng tới ≈ ${fmt0(SBV.liqSize(-1))} tỷ, mục tiêu liên NH ${pp(SBV.ibTarget(-1))})`, apply: W => SBV.stance(-1) },
       { label: 'Nới room hệ thống 2 điểm', apply: W => { W.sbv.sysRoom += 2; for (const b of W.banks) if (!b.dead) b.room += 2; W.addLog('Nới room tín dụng 2 điểm %.', 'good'); } },
       { label: 'Chưa làm gì', apply: () => {} }] },
   { id: 's_fx', mode: 'sbv', cool: 3, cond: W => W.macro.fx > 3, title: 'Tỷ giá vượt vùng an toàn',
     text: W => `VND mất giá ${pp(W.macro.fx, 1)}/năm, chênh lệch lãi suất VND–USD ${pp(W.market.ibON - W.macro.fedRate, 1)}, dự trữ ${fmt1(W.macro.reserves)} tỷ USD.`,
     options: [
-      { label: 'Bán giao ngay 3 tỷ USD', apply: W => SBV.spot(3) },
-      { label: 'Bán kỳ hạn 5 tỷ USD, 3 tháng', apply: W => SBV.fwd(5, 3, 0) },
-      { label: 'Hút 150 nghìn tỷ tín phiếu 28 ngày, lãi tín phiếu +1 để nâng lãi VND', apply: W => SBV.omo('absorb', 150000, 28, 1, W.sbv.bill + 1) },
-      { label: 'Tăng lãi suất điều hành 0,5 điểm', apply: W => SBV.rate(0.5) },
+      { label: W => `Bán USD giao ngay (tự định lượng, tháng tới ≈ ${fmt1(SBV.fxSize('spot'))} tỷ USD)`, apply: W => SBV.fxStance('spot') },
+      { label: W => `Bán USD kỳ hạn 3 tháng (tự định lượng, ≈ ${fmt1(SBV.fxSize('fwd'))} tỷ USD, chưa tốn dự trữ)`, apply: W => SBV.fxStance('fwd') },
+      { label: W => `Hút ròng (engine tự tính, tháng tới ≈ ${fmt0(SBV.liqSize(1))} tỷ, mục tiêu liên NH ${pp(SBV.ibTarget(1))})`, apply: W => SBV.stance(1) },
+      { label: W => `Tăng lãi suất điều hành (+${SBV.rateStep(1).toFixed(2).replace('.', ',')} theo Taylor)`, apply: W => SBV.rateDir(1) },
       { label: 'Chưa làm gì', apply: () => {} }] },
   { id: 's_tight', mode: 'sbv', cool: 2, cond: W => W.tightness > 2, title: 'Thanh khoản hệ thống căng',
     text: W => `Lãi liên ngân hàng ${pp(W.market.ibON)}, độ căng ${fmt1(W.tightness)}. Ngân hàng yếu có thể mất khả năng chi trả.`,
     options: [
-      { label: 'Bơm 50 nghìn tỷ OMO 7 ngày, giữ lãi OMO', apply: W => SBV.omo('inject', 50000, 7, 1) },
-      { label: 'Bơm 150 nghìn tỷ OMO 28 ngày, lãi OMO −0,5 (hạ nhiệt mạnh)', apply: W => SBV.omo('inject', 150000, 28, 0.5, W.sbv.omo - 0.5) },
+      { label: W => `Bơm ròng (engine tự tính, tháng tới ≈ ${fmt0(SBV.liqSize(-1))} tỷ, mục tiêu liên NH ${pp(SBV.ibTarget(-1))})`, apply: W => SBV.stance(-1) },
+      { label: W => `Giảm lãi suất điều hành (−${SBV.rateStep(-1).toFixed(2).replace('.', ',')} theo Taylor)`, apply: W => SBV.rateDir(-1) },
       { label: 'Hạ dự trữ bắt buộc 0,5 điểm', apply: W => SBV.set('rrrShort', -0.5, 0, 10, 'Dự trữ bắt buộc <12 tháng') },
       { label: 'Để thị trường tự cân bằng', apply: () => {} }] },
   { id: 's_loose', mode: 'sbv', cool: 3, cond: W => W.tightness < -0.6 && W.macro.fx > 1.5, title: 'Thanh khoản dư thừa, tỷ giá chịu áp lực',
     text: W => `Lãi liên ngân hàng ${pp(W.market.ibON)} thấp hơn lãi USD ${pp(W.macro.fedRate)}, tiền thừa gây sức ép tỷ giá.`,
     options: [
-      { label: 'Hút 80 nghìn tỷ tín phiếu 14 ngày, giữ lãi tín phiếu', apply: W => SBV.omo('absorb', 80000, 14, 1) },
-      { label: 'Hút 200 nghìn tỷ tín phiếu 91 ngày, lãi tín phiếu +0,5', apply: W => SBV.omo('absorb', 200000, 91, 0, W.sbv.bill + 0.5) },
+      { label: W => `Hút ròng (engine tự tính, tháng tới ≈ ${fmt0(SBV.liqSize(1))} tỷ, mục tiêu liên NH ${pp(SBV.ibTarget(1))})`, apply: W => SBV.stance(1) },
+      { label: W => `Tăng lãi suất điều hành (+${SBV.rateStep(1).toFixed(2).replace('.', ',')} theo Taylor)`, apply: W => SBV.rateDir(1) },
       { label: 'Chưa làm gì', apply: () => {} }] },
   { id: 's_weak', mode: 'sbv', cool: 3, cond: W => W.banks.some(b => !b.dead && (b.liqFail > 0 || b.car() < W.sbv.carMin || b.reputation < -1)), title: 'Có ngân hàng yếu cần xử lý',
     text: W => { const ws = W.banks.filter(b => !b.dead && (b.liqFail > 0 || b.car() < W.sbv.carMin || b.reputation < -1)); W._weak = ws[0]; return ws.map(b => `${b.code}: CAR ${pp(b.car(), 1)}, NPL ${pp(b.nplRatio() * 100, 1)}, thanh khoản ${pp(b.liqReserve(), 0)}, uy tín ${b.reputation.toFixed(1)}`).join('; ') + '.'; },
@@ -1971,18 +1981,19 @@ const EVENT_DECISIONS = {
     { label: 'Đẩy chương trình tiền gửi 12 tháng (+0,5 điểm)', apply: (W, B) => ACT.rate(B, 'rGt12', 0.5) },
     { label: 'Không thay đổi', apply: () => {} }] },
   run: { mode: 'sbv', title: 'Rút tiền hàng loạt: NHNN phản ứng', text: 'Tin đồn lan rộng, lãi liên ngân hàng tăng vọt.', options: [
-    { label: 'Bơm 100 nghìn tỷ OMO 7 ngày, đảo hạn 100%', apply: W => SBV.omo('inject', 100000, 7, 1) },
+    { label: W => `Bơm ròng (engine tự tính, tháng tới ≈ ${fmt0(SBV.liqSize(-1))} tỷ, mục tiêu liên NH ${pp(SBV.ibTarget(-1))})`, apply: W => SBV.stance(-1) },
     { label: 'Tuyên bố bảo đảm chi trả toàn hệ thống (uy tín các NH +1)', apply: W => { for (const b of W.banks) b.reputation = Math.min(0, b.reputation + 1); W.addLog('NHNN tuyên bố bảo đảm quyền lợi người gửi tiền.', 'good'); } },
     { label: 'Theo dõi', apply: () => {} }] },
   usdout_sbv: { mode: 'sbv', title: 'USD rút ròng: NHNN phản ứng', text: 'Tỷ giá tăng vọt, dự trữ giảm 8 tỷ USD, thanh khoản VND căng.', options: [
-    { label: 'Bán giao ngay 5 tỷ USD', apply: W => SBV.spot(5) },
-    { label: 'Bán kỳ hạn 10 tỷ USD, 3 tháng', apply: W => SBV.fwd(10, 3, 0) },
-    { label: 'Tăng lãi suất điều hành 1 điểm và hút 100 nghìn tỷ tín phiếu lãi +1', apply: W => { SBV.rate(1); SBV.omo('absorb', 100000, 28, 1, W.sbv.bill + 1); } },
+    { label: W => `Bán USD giao ngay (tự định lượng, tháng tới ≈ ${fmt1(SBV.fxSize('spot'))} tỷ USD)`, apply: W => SBV.fxStance('spot') },
+    { label: W => `Bán USD kỳ hạn 3 tháng (tự định lượng, ≈ ${fmt1(SBV.fxSize('fwd'))} tỷ USD, chưa tốn dự trữ)`, apply: W => SBV.fxStance('fwd') },
+    { label: W => `Hút ròng (engine tự tính, tháng tới ≈ ${fmt0(SBV.liqSize(1))} tỷ, mục tiêu liên NH ${pp(SBV.ibTarget(1))})`, apply: W => SBV.stance(1) },
+    { label: W => `Tăng lãi suất điều hành (+${SBV.rateStep(1).toFixed(2).replace('.', ',')} theo Taylor)`, apply: W => SBV.rateDir(1) },
     { label: 'Chờ thị trường tự điều chỉnh', apply: () => {} }] },
   iran: { mode: 'sbv', title: 'Chiến sự Trung Đông: NHNN phản ứng', text: 'Giá dầu tăng, CPI sẽ nhích lên nhiều tháng, tỷ giá chịu áp lực.', options: [
-    { label: 'Tăng lãi suất điều hành 0,5 điểm phòng ngừa', apply: W => SBV.rate(0.5) },
+    { label: W => `Tăng lãi suất điều hành (+${SBV.rateStep(1).toFixed(2).replace('.', ',')} theo Taylor)`, apply: W => SBV.rateDir(1) },
     { label: 'Giữ nguyên, chờ số liệu CPI', apply: () => {} },
-    { label: 'Hút 80 nghìn tỷ tín phiếu 14 ngày', apply: W => SBV.omo('absorb', 80000, 14, 1) }] },
+    { label: W => `Hút ròng (engine tự tính, tháng tới ≈ ${fmt0(SBV.liqSize(1))} tỷ, mục tiêu liên NH ${pp(SBV.ibTarget(1))})`, apply: W => SBV.stance(1) }] },
 };
 function queueDecisions(evId) {
   W.decisions = W.decisions || []; W.cool = W.cool || {};
@@ -1994,7 +2005,7 @@ function showDecision() {
   const q = W.decisions; if (!q || !q.length) return false;
   const { d } = q[0]; const B = W.player; const text = typeof d.text === 'function' ? d.text(W, B) : d.text;
   Clock.playing = false; setPlayBtn();
-  showModal((q[0].ev ? '' : 'Quyết định: ') + d.title, text, d.options.map(o => ({ label: o.label, apply: () => { o.apply(W, B); W.addLog(`Quyết định "${d.title}": ${o.label}.`, 'info'); q.shift(); renderGame(); if (q.length) showDecision(); } })));
+  showModal((q[0].ev ? '' : 'Quyết định: ') + d.title, text, d.options.map(o => { const lbl = typeof o.label === 'function' ? o.label(W, B) : o.label; return { label: lbl, apply: () => { o.apply(W, B); W.addLog(`Quyết định "${d.title}": ${lbl}.`, 'info'); q.shift(); renderGame(); if (q.length) showDecision(); } }; }));
   return true;
 }
 
@@ -2125,7 +2136,7 @@ function guidePane() {
     <h3>Khối vĩ mô có ràng buộc</h3>
     <p>Tăng trưởng, lạm phát, thất nghiệp và lãi suất gắn với nhau bằng bốn phương trình chuẩn (xem bảng "Ràng buộc vĩ mô" ở Tổng quan với số hiện tại): khoảng cách sản lượng tích lũy từ chênh lệch tăng trưởng so với tiềm năng 6,5%; đường IS kéo tăng trưởng về tiềm năng trừ tác động của lãi suất thực (lãi điều hành trừ kỳ vọng lạm phát) cộng xung lực tín dụng; đường Phillips đẩy lạm phát theo khoảng cách sản lượng, tiền tệ, tỷ giá và neo kỳ vọng 3,5%; định luật Okun kéo thất nghiệp về 2,3% trừ 0,35 lần chênh lệch tăng trưởng; quy tắc Taylor cho mức lãi suất điều hành gợi ý. Thất nghiệp và lãi suất thực cao làm nợ xấu hình thành nhanh hơn.</p>
     <h3>Chế độ Thống đốc NHNN</h3>
-    <p>Bạn điều hành cả hệ thống bằng các nghiệp vụ thật: OMO bơm (mua kỳ hạn TPCP) hoặc hút (tín phiếu) với kỳ hạn 7/14/28/91 ngày và tỷ lệ đảo hạn khi đến hạn; bán USD giao ngay (tốn dự trữ ngay) hoặc bán kỳ hạn 3–6 tháng (hạ nhiệt kỳ vọng, dự trữ chỉ giảm khi đáo hạn, ngân hàng được hủy nếu VND ổn định). Lãi suất tái cấp vốn neo lãi suất thị trường; dự trữ bắt buộc hút hoặc bơm tiền cơ sở; room tín dụng và các trần LDR, vốn ngắn hạn cho vay TDH khống chế tốc độ và cấu trúc tăng trưởng. Tỷ giá phụ thuộc chênh lệch lãi suất VND–USD: lãi liên ngân hàng thấp hơn Fed nhiều thì VND mất giá, bạn phải bán dự trữ hoặc hút tiền. Tín dụng tăng nhanh đẩy GDP nhưng kéo CPI và BĐS lên với độ trễ.</p>
+    <p>Bạn chỉ chọn hướng, còn lượng và bước do thị trường quyết. Thanh khoản: hút ròng hay bơm ròng, engine tự tính lượng tín phiếu (28 ngày) hoặc OMO (7 ngày) mỗi tháng để đưa lãi liên ngân hàng về mục tiêu (hút: max(OMO + 1, Fed + 0,5) để giữ chênh lệch lãi VND–USD dương; bơm: OMO − 0,4); về trung tính thì các đợt tất toán dần. Tỷ giá: bán USD giao ngay (tốn dự trữ ngay) hoặc bán kỳ hạn 3 tháng (hạ nhiệt kỳ vọng, dự trữ chỉ giảm khi đáo hạn, ngân hàng được hủy nếu VND ổn định), lượng tính theo mức VND mất giá vượt 2,5%/năm. Lãi suất điều hành: chỉ chọn tăng hay giảm, bước bằng nửa khoảng cách tới quy tắc Taylor (0,25–1,0 điểm), trần huy động đi theo. Lãi suất tái cấp vốn neo lãi suất thị trường; dự trữ bắt buộc hút hoặc bơm tiền cơ sở; room tín dụng và các trần LDR, vốn ngắn hạn cho vay TDH khống chế tốc độ và cấu trúc tăng trưởng. Tỷ giá phụ thuộc chênh lệch lãi suất VND–USD: lãi liên ngân hàng thấp hơn Fed nhiều thì VND mất giá, bạn phải bán dự trữ hoặc hút tiền. Tín dụng tăng nhanh đẩy GDP nhưng kéo CPI và BĐS lên với độ trễ.</p>
     <h3>Ghi chú</h3>
     <p>Đây là mô hình rút gọn để học và thử chính sách. Các hệ số co giãn, xác suất chuyển nhóm nợ và quy mô ngân hàng là giả định, không phải số liệu thật của bất kỳ ngân hàng nào. Có thể lưu ván chơi vào trình duyệt bằng nút Lưu.</p>
   </div>`;
