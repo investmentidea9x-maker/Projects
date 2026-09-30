@@ -26,12 +26,12 @@ function run(seed, verbose){
     for(const a of (SCRIPT[k]||[])){ if(a.ev){ const ev=EVENTS.find(e=>e.id===a.ev); ev.apply(W); W.lastEv[a.ev]=W.month; W.addLog('Sự kiện: '+ev.title,'warn'); } if(a.fx){ W.macro.fx+=a.fx; } if(a.shock){ W.addShock(a.shock); } }
     W.aiPolicy(W.player); W.pendingEvent=null; W.step(); W.pendingEvent=null;
     const M=W.macro,K=W.market,S=W.sbv;
-    rows.push({k, date:W.dateStr(), cpi:[M.cpi,HIST.cpi[idx]], gdp:[M.gdp,HIST.gdp[idx]], refi:[S.refi,HIST.refi[idx]], ibON:[K.ibON,HIST.ibON[idx]], usd:[M.usd,HIST.usd[idx]], dep12:[K.gt12,HIST.dep12[idx]], lend:[K.lendSys-1.6,HIST.lend[idx]], cg:[W.sysCreditGrowthAnn,HIST.cg[idx]], res:[M.reserves,HIST.res[idx]], npl:[W.sysNpl()*100,HIST.npl[idx]], re:[M.re,HIST.re[idx]], fx:[M.fx, idx>=12?(HIST.usd[idx]/HIST.usd[idx-12]-1)*100:0], tightn:[W.tightness,0], omo:S.omoNet, fxSell:S.fxSell, tight:W.tightness});
+    rows.push({k, date:W.dateStr(), cpi:[M.cpi,HIST.cpi[idx]], gdp:[M.gdp,HIST.gdp[idx]], refi:[S.refi,HIST.refi[idx]], ibON:[K.ibON,HIST.ibON[idx]], usd:[M.usd,HIST.usd[idx]], dep12:[K.gt12,HIST.dep12[idx]], m2:[M.m2,HIST.m2[idx]], lend:[K.lendSys-1.6,HIST.lend[idx]], cg:[W.sysCreditGrowthAnn,HIST.cg[idx]], res:[M.reserves,HIST.res[idx]], npl:[W.sysNpl()*100,HIST.npl[idx]], re:[M.re,HIST.re[idx]], fx:[M.fx, idx>=12?(HIST.usd[idx]/HIST.usd[idx-12]-1)*100:0], tightn:[W.tightness,0], omo:S.omoNet, fxSell:S.fxSell, tight:W.tightness});
   }
   return {W,rows};
 }
 const N=+(process.argv[2]||8); const runs=[]; for(let i=0;i<N;i++) runs.push(run(i));
-const keys=['cpi','gdp','refi','ibON','usd','dep12','lend','cg','res','npl','re','fx','tightn'];
+const keys=['cpi','gdp','refi','ibON','usd','dep12','lend','cg','m2','res','npl','re','fx','tightn'];
 const avg=k=>runs[0].rows.map((_,j)=>runs.reduce((a,r)=>a+r.rows[j][k][0],0)/runs.length);
 console.log('Tháng      '+keys.map(k=>k.padStart(11)).join(''));
 for(let j=0;j<21;j++){ const r=runs[0].rows[j]; if(j%3!==2 && j!==20) continue;
