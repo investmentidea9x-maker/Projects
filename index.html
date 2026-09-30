@@ -1723,6 +1723,7 @@ function renderStart() {
     <h1>BankSim Việt Nam</h1>
     <p class="lead">Khởi đầu từ tháng 10/2025 trên nền dữ liệu lịch sử thật của kinh tế Việt Nam 1/2022–9/2025 (CPI, GDP, tỷ giá, lãi suất điều hành, liên ngân hàng, huy động, cho vay, tín dụng, dự trữ, Fed, nhiệt bất động sản; số liệu xấp xỉ tổng hợp công khai). Mô phỏng thời gian thực điều hành ngân hàng theo khung pháp lý Việt Nam: CAR (TT41), LDR 85% (TT22), vốn ngắn hạn cho vay trung dài hạn 30%, dự trữ bắt buộc, trần lãi suất huy động, room tín dụng, phân loại nợ 5 nhóm và trích lập dự phòng (TT11). Mỗi tháng trôi qua trong vài giây; bạn chỉnh lãi suất, cơ cấu và nguồn vốn trong khi khách ra vào trụ sở. Số liệu tính bằng tỷ đồng, mô phỏng để học, không phải số liệu thật.</p>
     <div class="panel" style="margin-top:16px"><h2>Độ khó</h2><div class="diffs">${Object.entries(DIFF).map(([k, d]) => `<label class="diff"><input type="radio" name="diff" value="${k}" ${k === 'real' ? 'checked' : ''}> <b>${d.name}</b><span class="small muted"> · ${d.desc}</span></label>`).join('')}</div></div>
+    <div class="panel" style="margin-top:12px"><h2>Thời gian chơi</h2><div class="diffs">${[[36, '3 năm'], [60, '5 năm (một nhiệm kỳ)'], [120, '10 năm'], [180, '15 năm'], [0, 'Không giới hạn']].map(([v, n]) => `<label class="diff"><input type="radio" name="term" value="${v}" ${v === 60 ? 'checked' : ''}> <b>${n}</b></label>`).join('')}</div><p class="small muted">Hết thời gian thì chấm điểm và dừng; có thể nới thêm trong khi chơi bằng ô "Thời gian" ở thanh bên.</p></div>
     <h2 style="margin-top:20px">Chọn vai trò: điều hành một trong 9 ngân hàng (4 SOB, 5 JSB) hoặc làm NHNN</h2>
     <div class="cards">
       ${BANKS.map(a => `<button class="card" data-mode="bank" data-bank="${a.id}">
@@ -1738,7 +1739,7 @@ function renderStart() {
     </div>
     <p class="small muted" style="margin-top:14px">Có bản lưu? <button class="btn small" id="loadBtn">Tải ván đã lưu</button></p>
   </div>`;
-  app.querySelectorAll('.card').forEach(c => c.onclick = () => { const d = (app.querySelector('input[name=diff]:checked') || {}).value || 'real'; W = new World(c.dataset.mode, c.dataset.bank, d); tab = 'dash'; selectedBank = 0; renderShell(); });
+  app.querySelectorAll('.card').forEach(c => c.onclick = () => { const d = (app.querySelector('input[name=diff]:checked') || {}).value || 'real'; W = new World(c.dataset.mode, c.dataset.bank, d); W.termMonths = +((app.querySelector('input[name=term]:checked') || {}).value ?? 60); tab = 'dash'; selectedBank = 0; renderShell(); });
   $('#loadBtn').onclick = () => { if (loadGame()) renderShell(); else toast('Không có bản lưu trong trình duyệt này.'); };
 }
 
@@ -1755,6 +1756,7 @@ function renderShell() {
       <div class="side-brand">${isBank ? logoSvg(B.spec, 34) : '<span class="side-logo">NHNN</span>'}<div><b>BankSim Việt Nam</b><span class="sub">${isBank ? B.code + ' · ' + B.name : 'Thống đốc NHNN'}</span></div></div>
       <div class="side-clock"><span class="date" id="dateLbl"></span><div class="progress"><i id="prog"></i></div>
         <div class="ctrl"><button class="btn primary" id="playBtn">▶ Chạy</button><button class="btn" id="nextBtn">+1 tuần</button><button class="btn" id="autoBtn" title="Máy tự điều hành thay bạn: ngân hàng theo chính sách AI, NHNN theo quy tắc Taylor, tín phiếu, biên độ tỷ giá">🤖 Tự động: tắt</button>
+        <select id="termSel" class="btn" aria-label="Thời gian chơi" title="Thời gian chơi (có thể nới khi đang chơi)">${[[36, '3 năm'], [60, '5 năm'], [120, '10 năm'], [180, '15 năm'], [0, '∞ không giới hạn']].map(([v, n]) => `<option value="${v}">${n}</option>`).join('')}</select>
         <select id="speedSel" class="btn" aria-label="Tốc độ"><option value="2000">2 s/tuần</option><option value="1000" selected>1 s/tuần</option><option value="400">0,4 s/tuần</option><option value="120">0,12 s/tuần</option></select></div></div>
       <nav class="side-nav" id="tabs" aria-label="Điều hướng"></nav>
       <div class="side-kpis" id="kpis"></div>
@@ -1781,6 +1783,7 @@ function renderShell() {
   $('#playBtn').onclick = togglePlay; $('#autoBtn').onclick = toggleAuto; if (Auto.on) { $('#autoBtn').textContent = '🤖 Tự động: BẬT'; $('#autoBtn').classList.add('on'); }
   $('#speedSel').onchange = e => { Clock.speed = +e.target.value; Clock.acc = Math.min(Clock.acc, Clock.speed); };
   $('#speedSel').value = String(Clock.speed);
+  W.termMonths = W.termMonths ?? 60; $('#termSel').value = String(W.termMonths); $('#termSel').onchange = e => { const v = +e.target.value; W.termMonths = v; if (W.ended && (v === 0 || W.month < v)) { W.ended = false; W.shownEnd = false; toast('Đã nới thời gian chơi, ván tiếp tục.'); } else if (!W.ended && v > 0 && W.month >= v) endGame(); updateTop(); };
   $('#nextBtn').onclick = () => { if (W.pendingEvent && W.pendingEvent.choice) { showEvent(); return; } stepWeek(); };
   W.weekly = true;
   $('#saveBtn').onclick = () => { saveGame() ? toast('Đã lưu vào trình duyệt.') : toast('Không lưu được (bộ nhớ trình duyệt bị chặn).'); };
@@ -1789,7 +1792,7 @@ function renderShell() {
   if (!Clock.raf) { Clock.raf = true; Clock.last = 0; requestAnimationFrame(loop); }
 }
 function setPlayBtn() { const b = $('#playBtn'); if (b) { b.textContent = Clock.playing ? '⏸ Tạm dừng' : '▶ Chạy'; b.classList.toggle('primary', !Clock.playing); } }
-function togglePlay() { if (W.ended) { toast('Ván đã kết thúc sau 5 năm. Bấm Ván mới để chơi lại.'); return; } if (W.pendingEvent && W.pendingEvent.choice) { showEvent(); return; } if (W.player && W.player.dead) return; Clock.playing = !Clock.playing; setPlayBtn(); }
+function togglePlay() { if (W.ended) { toast(`Ván đã kết thúc sau ${Math.round(W.termMonths / 12)} năm. Nới thời gian ở ô "Thời gian" hoặc bấm Ván mới.`); return; } if (W.pendingEvent && W.pendingEvent.choice) { showEvent(); return; } if (W.player && W.player.dead) return; Clock.playing = !Clock.playing; setPlayBtn(); }
 function loop(ts) {
   if (!W) { Clock.raf = false; return; }
   const dt = Math.min(0.1, (ts - (Clock.last || ts)) / 1000); Clock.last = ts;
@@ -1810,8 +1813,9 @@ function autoMonthPolicy() { // chế độ Tự động: máy chỉnh chính s�
 function endGame() { // ván kết thúc sau 5 năm (60 tháng): chấm điểm, không chạy tiếp
   W.shownEnd = true; W.ended = true; Clock.playing = false; setPlayBtn(); W.decisions = []; W.pendingEvent = null;
   const B = W.player;
-  if (B) { const g = B.score >= 60 ? 'Xuất sắc' : B.score >= 30 ? 'Tốt' : B.score >= 0 ? 'Trung bình' : 'Kém'; showModal('Kết thúc nhiệm kỳ 5 năm', `<b>${B.name}</b> sau 60 tháng: tổng tài sản ${fmt0(B.totalAssets())} tỷ, CAR ${pp(B.car(), 1)}, nợ xấu ${pp(B.nplRatio() * 100, 1)}, ROE năm cuối ${pp(B.roeLast ?? 0, 1)}. Điểm CEO ${B.score} → xếp loại <b>${g}</b>.</p>${postMortem(B)}<p class="small muted">Ván đã kết thúc; bạn vẫn xem được mọi tab. Bản đầy đủ ở tab Nhật ký, có nút sao chép.`, [{ label: 'Xem lại', apply: () => { tab = 'log'; renderGame(); } }, { label: 'Ván mới', apply: () => { W = null; renderStart(); } }]); }
-  else { const sc = W.sbvScore(); const M = W.macro; const g = sc >= 8 ? 'Xuất sắc' : sc >= 4 ? 'Tốt' : sc >= 0 ? 'Trung bình' : 'Kém'; showModal('Kết thúc nhiệm kỳ Thống đốc 5 năm', `Sau 60 tháng: CPI ${pp(M.cpi, 1)}, GDP ${pp(M.gdp, 1)}, USD/VND ${fmt0(M.usd)} (${ytdFx(M)}), dự trữ ${fmt1(M.reserves)} tỷ USD, nợ xấu hệ thống ${pp(W.sysNpl() * 100, 1)}, ngân hàng bị kiểm soát đặc biệt: ${W.banks.filter(b => b.dead).length}. Điểm Thống đốc ${sc} → xếp loại <b>${g}</b>.<p class="small muted">Ván đã kết thúc; bạn vẫn xem được mọi tab và dòng thời gian.`, [{ label: 'Xem lại', apply: () => { tab = 'timeline'; renderGame(); } }, { label: 'Ván mới', apply: () => { W = null; renderStart(); } }]); }
+  const yrs = Math.max(1, Math.round(W.month / 12)); const sc60 = B ? B.score * 60 / Math.max(12, W.month) : 0; // điểm CEO quy về thang 5 năm để xếp loại
+  if (B) { const g = sc60 >= 60 ? 'Xuất sắc' : sc60 >= 30 ? 'Tốt' : sc60 >= 0 ? 'Trung bình' : 'Kém'; showModal(`Kết thúc nhiệm kỳ ${yrs} năm`, `<b>${B.name}</b> sau ${W.month} tháng: tổng tài sản ${fmt0(B.totalAssets())} tỷ, CAR ${pp(B.car(), 1)}, nợ xấu ${pp(B.nplRatio() * 100, 1)}, ROE năm cuối ${pp(B.roeLast ?? 0, 1)}. Điểm CEO ${B.score} → xếp loại <b>${g}</b>.</p>${postMortem(B)}<p class="small muted">Ván đã kết thúc; bạn vẫn xem được mọi tab, hoặc nới thời gian ở ô "Thời gian" để chơi tiếp. Bản đầy đủ ở tab Nhật ký, có nút sao chép.`, [{ label: 'Xem lại', apply: () => { tab = 'log'; renderGame(); } }, { label: 'Ván mới', apply: () => { W = null; renderStart(); } }]); }
+  else { const sc = W.sbvScore(); const M = W.macro; const g = sc >= 8 ? 'Xuất sắc' : sc >= 4 ? 'Tốt' : sc >= 0 ? 'Trung bình' : 'Kém'; showModal(`Kết thúc nhiệm kỳ Thống đốc ${yrs} năm`, `Sau ${W.month} tháng: CPI ${pp(M.cpi, 1)}, GDP ${pp(M.gdp, 1)}, USD/VND ${fmt0(M.usd)} (${ytdFx(M)}), dự trữ ${fmt1(M.reserves)} tỷ USD, nợ xấu hệ thống ${pp(W.sysNpl() * 100, 1)}, ngân hàng bị kiểm soát đặc biệt: ${W.banks.filter(b => b.dead).length}. Điểm Thống đốc ${sc} → xếp loại <b>${g}</b>.<p class="small muted">Ván đã kết thúc; bạn vẫn xem được mọi tab và dòng thời gian, hoặc nới thời gian ở ô "Thời gian" để chơi tiếp.`, [{ label: 'Xem lại', apply: () => { tab = 'timeline'; renderGame(); } }, { label: 'Ván mới', apply: () => { W = null; renderStart(); } }]); }
 }
 function stepWeek() { // một tuần: kinh tế chảy 1/4 tháng, sự kiện có thể xảy ra, cảnh chạy tiếp; hết 4 tuần thì khóa sổ tháng
   if (W.ended) { Clock.playing = false; setPlayBtn(); return; }
@@ -1842,7 +1846,7 @@ function stepMonth() { // tháng vừa khóa sổ: báo cáo, quyết định, s
   if (B && B.dead) W.pendingEvent = null; // đã bị kiểm soát đặc biệt: không hỏi thêm sự kiện
   if (W.pendingEvent) { if (W.pendingEvent.choice) { Clock.playing = false; setPlayBtn(); } showEvent(); if (W.pendingEvent === null && evId) { const base = EVENTS.find(e => e.id === evId); if (base && base._choices) { base.choice = true; base.choices = base._choices; delete base._choices; } } }
   if (B && B.dead) { W.decisions = []; if (!B.shownDead) { Clock.playing = false; setPlayBtn(); B.shownDead = true; showModal(B.deadReason.includes('Tổng giám đốc') ? 'Bị thay Tổng giám đốc' : 'Kiểm soát đặc biệt', `<b>${B.name}</b>: ${B.deadReason}. Điểm ${B.score} sau ${W.month} tháng.</p>${postMortem(B)}<p class="small muted">Bản đầy đủ ở tab Nhật ký, có nút sao chép để gửi đi phân tích.`, [{ label: 'Xem lại', apply: () => { tab = 'log'; renderGame(); } }, { label: 'Ván mới', apply: () => { W = null; renderStart(); } }]); } }
-  else { if (Auto.on) { W.decisions = []; } else { queueDecisions(evId); if (!(W.pendingEvent && W.pendingEvent.choice)) showDecision(); } if (W.month >= 60 && !W.shownEnd) endGame(); }
+  else { if (Auto.on) { W.decisions = []; } else { queueDecisions(evId); if (!(W.pendingEvent && W.pendingEvent.choice)) showDecision(); } if (W.termMonths > 0 && W.month >= W.termMonths && !W.shownEnd) endGame(); }
 }
 function updateTop() {
   const isBank = W.mode === 'bank'; const B = isBank ? W.player : W.banks[selectedBank]; const S = W.sbv, M = W.macro;
@@ -1874,7 +1878,7 @@ function updateTop() {
       + kpiCell('Điểm Thống đốc', String(W.sbvScore()));
   }
   $('#kpis').innerHTML = kpis;
-  $('#dateLbl').textContent = `${W.weekStr()} · tháng thứ ${W.curMonth()}`;
+  $('#dateLbl').textContent = `${W.weekStr()} · tháng thứ ${W.curMonth()}${W.termMonths > 0 ? '/' + W.termMonths : ''}`;
 }
 function renderTabs() {
   const isBank = W.mode === 'bank';
@@ -2953,7 +2957,7 @@ function loadGame() {
     const raw = localStorage.getItem('banksim-vn'); if (!raw) return false;
     const d = JSON.parse(raw); const w = new World(d.mode, d.playerId, d.diffKey);
     Object.assign(w, d); w.banks = d.banks.map(bd => { const b = new Bank(BANKS.find(x => x.id === bd.id), bd.isPlayer); Object.assign(b, bd); if (!b.mltShare) b.initTenor(b.spec); if (b.pol.mltPref == null) b.pol.mltPref = 1; return b; });
-    w.player = d.mode === 'bank' ? w.banks.find(b => b.isPlayer) : null; w.pendingEvent = null; w.sbv.ops = w.sbv.ops || []; w.sbv.bill = w.sbv.bill ?? w.sbv.omo - 0.5; w.sbv.band = w.sbv.band ?? 5; w.actions = w.actions || []; w.regApplied = w.regApplied || {}; KBNN_LDR = 0.5; for (const r of [...REG_CAL].sort((a, b) => a.y - b.y || a.mo - b.mo)) if ((r.y < w.year || (r.y === w.year && r.mo <= w.monthOfYear)) && /tt26|tt08|kbnn/.test(r.id)) { if (r.id === 'tt26_40') KBNN_LDR = 0.4; else if (r.id === 'tt02_off') KBNN_LDR = 0.2; else if (r.id === 'tt26_0') KBNN_LDR = 0; else if (r.id === 'tt08') KBNN_LDR = 0.2; else if (r.id === 'kbnn50') KBNN_LDR = 0.5; } w.week = w.engineV === 2 ? (w.week || 0) : 0; w.engineV = 2; w.wk = w.wk || []; for (const b of w.banks) b.wk = b.wk || []; w.tick = w.tick || w.month * 4; w.lastEvTick = w.lastEvTick ?? -99; w.startY = w.startY ?? START.y; w.startMo = w.startMo ?? START.mo; w.L = w.L ?? HIST_N - 1; if (!w.fiscal) w.initFiscal(); for (const b of w.banks) b.treasury = b.treasury ?? 0; w.macro.usdY0 = w.macro.usdY0 ?? w.macro.usd; w.decisions = []; W = w; return true;
+    w.player = d.mode === 'bank' ? w.banks.find(b => b.isPlayer) : null; w.pendingEvent = null; w.sbv.ops = w.sbv.ops || []; w.sbv.bill = w.sbv.bill ?? w.sbv.omo - 0.5; w.sbv.band = w.sbv.band ?? 5; w.actions = w.actions || []; w.regApplied = w.regApplied || {}; KBNN_LDR = 0.5; for (const r of [...REG_CAL].sort((a, b) => a.y - b.y || a.mo - b.mo)) if ((r.y < w.year || (r.y === w.year && r.mo <= w.monthOfYear)) && /tt26|tt08|kbnn/.test(r.id)) { if (r.id === 'tt26_40') KBNN_LDR = 0.4; else if (r.id === 'tt02_off') KBNN_LDR = 0.2; else if (r.id === 'tt26_0') KBNN_LDR = 0; else if (r.id === 'tt08') KBNN_LDR = 0.2; else if (r.id === 'kbnn50') KBNN_LDR = 0.5; } w.termMonths = w.termMonths ?? 60; w.week = w.engineV === 2 ? (w.week || 0) : 0; w.engineV = 2; w.wk = w.wk || []; for (const b of w.banks) b.wk = b.wk || []; w.tick = w.tick || w.month * 4; w.lastEvTick = w.lastEvTick ?? -99; w.startY = w.startY ?? START.y; w.startMo = w.startMo ?? START.mo; w.L = w.L ?? HIST_N - 1; if (!w.fiscal) w.initFiscal(); for (const b of w.banks) b.treasury = b.treasury ?? 0; w.macro.usdY0 = w.macro.usdY0 ?? w.macro.usd; w.decisions = []; W = w; return true;
   } catch (e) { return false; }
 }
 
