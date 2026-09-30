@@ -60,6 +60,33 @@ Trò chơi bắt đầu tháng 10/2025 trên nền 45 tháng lịch sử vĩ mô
 - **Chu kỳ nội sinh.** Bất động sản có quán tính, nóng lên khi lãi suất thực thấp và tín dụng nhanh, đổ vỡ khi NHNN thắt chặt; lạm phát đi theo tín dụng, chênh lệch sản lượng và tỷ giá; Fed đi theo chu kỳ Mỹ ~7 năm từng bước 0,25. Pha chu kỳ (Mở rộng, Quá nóng, Thắt chặt, Suy giảm, Phục hồi) được suy ra từ trạng thái và hiển thị khắp nơi.
 - **Sự kiện phát sinh từ trạng thái.** Xác suất mỗi sự kiện tính từ chu kỳ: khủng hoảng trái phiếu chỉ xảy ra khi BĐS nóng và lãi suất tăng; rút tiền hàng loạt khi có ngân hàng yếu; USD rút khi chênh lệch lãi suất âm sâu; sốt vàng khi lạm phát hoặc tỷ giá cao; nới room giữa năm khi lạm phát thấp và tín dụng chậm; Thông tư 02 khi nợ xấu tăng và tăng trưởng yếu. Chỉ các cú sốc bên ngoài (chiến sự, thương mại, thiên tai, suy thoái toàn cầu) giữ xác suất nền nhỏ, nhân theo độ khó.
 
+## Backtest 2024–2025: mô hình tự chạy lại hai năm thật
+
+`node tools/backtest.js` khởi tạo thế giới ở 12/2023 (quy mô ngân hàng thu về theo dư nợ cuối 2023), ép các cú sốc ngoại sinh thật theo lịch (đường lãi suất Fed; USD mạnh và sốt vàng 3–11/2024; nới room 8/2024 và 7/2025; bão Yagi 9/2024; Trump đắc cử 11/2024; chỉ thị thúc tín dụng 2/2025; thuế đối ứng Mỹ 4/2025; chiến sự Israel–Iran 6/2025), tắt sự kiện ngẫu nhiên, để NHNN tự động và 9 ngân hàng máy tự phản ứng, rồi so với dữ liệu thật từng quý (trung bình 8 lần chạy; sim/thật):
+
+| Chỉ tiêu | T6/2024 | T12/2024 | T6/2025 | T9/2025 | RMSE 21 tháng |
+|---|---|---|---|---|---|
+| CPI % | 3,5 / 4,3 | 3,4 / 2,9 | 3,6 / 3,6 | 4,1 / 3,4 | 0,6 |
+| GDP % | 6,8 / 7,3 | 7,2 / 7,5 | 7,4 / 8,2 | 7,4 / 8,2 | 0,6 |
+| Lãi tái cấp vốn % | 4,5 / 4,5 | 4,5 / 4,5 | 4,5 / 4,5 | 4,5 / 4,5 | 0,0 |
+| Liên ngân hàng O/N % | 4,0 / 4,5 | 3,8 / 4,3 | 4,3 / 3,5 | 4,1 / 4,7 | 1,2 |
+| USD/VND | 24.618 / 25.460 | 24.982 / 25.480 | 25.365 / 26.150 | 25.609 / 26.380 | 607 |
+| Lãi huy động 12 tháng % | 5,4 / 4,9 | 5,3 / 5,2 | 5,7 / 4,9 | 5,5 / 4,9 | 0,5 |
+| Lãi cho vay bình quân % | 8,1 / 7,5 | 7,8 / 7,7 | 8,1 / 7,2 | 8,1 / 7,3 | 0,5 |
+| Tín dụng YoY % | 14,0 / 15,0 | 13,3 / 15,1 | 12,7 / 19,3 | 12,8 / 19,8 | 4,0 |
+| Dự trữ ngoại hối tỷ USD | 92 / 85 | 90 / 80 | 87 / 80 | 85 / 80 | 7,5 |
+| Nợ xấu % | 2,0 / 2,3 | 2,5 / 2,1 | 2,6 / 2,2 | 2,7 / 2,2 | 0,4 |
+
+Hiệu chỉnh rút ra từ backtest (đã đưa vào engine):
+- **NHNN tự động**: giữ lãi suất điều hành như 2024–2025 (không cắt theo Taylor khi Fed còn cao hơn 0,5 điểm hoặc VND mất giá trên 2%; chỉ tăng khi CPI trên 4,3% và khoảng cách Taylor lớn, hoặc tỷ giá vỡ biên độ với dự trữ thấp; cắt vì tăng trưởng chỉ khi GDP dưới 6,5%); phát hành tín phiếu từ khi VND mất giá trên 3%/năm, bán USD từ trên 4%/năm với lượng tỷ lệ theo mức vượt; nới room cho cả hệ thống khi Chính phủ thúc tăng trưởng.
+- **Tỷ giá**: áp lực = 0,5·(Fed − liên NH) + 1,8 + 0,15·max(0, CPI − 4) + cú sốc kéo dài (USD mạnh, thuế quan, rút vốn), tỷ giá tiến 35% khoảng cách mỗi tháng; 1 tỷ USD bán ra hạ đà mất giá 0,2 điểm (2024: bán ~7 tỷ USD mà VND vẫn −5%).
+- **Ngân hàng máy**: sát trần LDR thì phát hành giấy tờ có giá (1,5% tài sản/tháng) và vẫn cho vay tới 12%; khách cũ đảo nợ ít nhạy lãi hơn khách mới; ngân hàng khẩu vị cao có cầu tốt hơn; giữ hồ sơ kỳ hạn quen thuộc.
+- **Thị trường**: lãi huy động 12 tháng = tái cấp vốn + 0,8 (thay vì +1,2); biên cho vay 2,3; tiền gửi tăng chậm hơn tín dụng 1,5 điểm (LDR nhích lên như thực tế); gửi liên ngân hàng ~9% tài sản là cơ cấu bình thường, chỉ phần vượt mới làm lãi liên ngân hàng tụt.
+- **Nợ xấu**: hệ số hình thành mức "Thực tế" 1,15 (trước 1,35), tham chiếu tăng trưởng 6,5%; kỳ vọng ROE cổ đông nâng lên 15% (thực tế) và 18% (khắc nghiệt) để độ khó không đổi.
+- **Kỹ thuật**: mốc khởi đầu game có thể đặt ở bất kỳ điểm dữ liệu nào (`new World(mode, id, diff, { startIdx, scale, scripted })`), tháng 0 là điểm dữ liệu cuối (T9/2025), tháng 1 là T10/2025.
+
+Còn lệch: tín dụng 2025 (sim 13% so với 19,8% thật) và GDP 2025 (7,4 so với 8,2): năm 2025 có cú bứt phá room 20%+, BĐS nóng và xuất khẩu chạy trước thuế mà mô hình chỉ tái tạo một phần; lãi cho vay cao hơn thật ~0,5 điểm; dự trữ ngoại hối giảm chậm hơn thật ~5 tỷ USD.
+
 ## Tài khóa: Kho bạc Nhà nước, đầu tư công, trái phiếu Chính phủ, mục tiêu GDP 8%
 
 Khối tài khóa chạy mỗi tháng (tham số xấp xỉ 2025, tỷ VND/năm: thu ngân sách 2.000 nghìn tỷ, chi thường xuyên 1.600, kế hoạch đầu tư công 830 tăng ~15%/năm, phát hành TPCP 480; tất cả trượt theo GDP danh nghĩa):
