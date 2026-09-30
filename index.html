@@ -139,7 +139,7 @@ body.game{padding:0}
 .side-brand{display:flex;gap:10px;align-items:center}.side-brand b{font-size:15px;color:var(--accent);display:block;line-height:1.2}.side-brand .sub{font-size:11px;color:var(--muted);display:block}
 .side-logo{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:6px;background:#a0182b;color:#fff;font-size:9px;font-weight:700;flex:none}
 .side-clock .date{display:block;margin-bottom:4px;font-size:14px}
-.side .ctrl{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}.side .ctrl select{grid-column:1/-1}
+.side .ctrl{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}.side .ctrl select,.side .ctrl #autoBtn{grid-column:1/-1}#autoBtn.on{background:#b26a00;color:#fff;border-color:#b26a00}
 .side-nav{display:flex;flex-direction:column;gap:2px}
 .side-nav .tab{text-align:left;border:0;border-left:3px solid transparent;border-radius:0 6px 6px 0;padding:7px 10px;color:var(--muted);background:none;font-weight:500;font-size:13px}
 .side-nav .tab.active{color:var(--accent);border-left-color:var(--accent);background:var(--accent-soft)}
@@ -164,7 +164,13 @@ canvas#hud{position:absolute;left:0;top:0;width:100%;aspect-ratio:480/140;height
 .ticker-wrap{overflow:hidden;background:#0b1020;color:#ffd84a;font-family:var(--mono);font-size:12px;height:20px;line-height:20px;white-space:nowrap;position:relative}
 .ticker{display:inline-block;white-space:nowrap;will-change:transform;padding-inline:8px}
 /* Sân khấu: dashboard vẽ ngay trên cùng màn hình với cảnh pixel; terminal bên phải; các tab chức năng ở dưới */
-.split{display:grid;grid-template-columns:minmax(0,2.1fr) minmax(260px,1fr);gap:10px;align-items:stretch;padding-top:6px}
+.split{display:grid;grid-template-columns:minmax(0,1.9fr) minmax(340px,1fr);gap:10px;align-items:stretch;padding-top:6px}
+.right{display:grid;grid-template-rows:minmax(0,1.55fr) minmax(0,1fr);gap:8px;height:calc(100vh - 12px);box-sizing:border-box;min-width:0}
+.tools{overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 8px;min-height:0;box-sizing:border-box}
+.tools-head{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:2px 2px 6px;border-bottom:1px solid var(--line);margin-bottom:4px}.tools-head b{font-size:13px}
+.tools .grid{grid-template-columns:1fr;gap:8px}.tools .panel{padding:6px 8px}.tools .panel h2{font-size:11.5px;margin-bottom:4px}.tools .panel p{margin:3px 0;font-size:11.5px}
+.tools .arow{grid-template-columns:minmax(80px,1fr) auto auto;gap:4px 6px;padding:4px 0}.tools .arow .lbl{font-size:12px}.tools .arow .hint{font-size:10.5px}.tools .arow .val{font-size:12px}.tools .btn.small{padding:2px 6px;font-size:11px}.tools .abtns{gap:3px}
+.tools table{font-size:11.5px}
 .stage{display:flex;flex-direction:column;background:#0b1020;border:1px solid #30363d;border-radius:8px;overflow:hidden;height:calc(100vh - 12px);min-width:0;box-sizing:border-box}
 .dash-area{position:relative;flex:1 1 auto;min-height:0}
 #dashcv{position:absolute;inset:0;width:100%;height:100%;display:block}
@@ -172,12 +178,12 @@ canvas#hud{position:absolute;left:0;top:0;width:100%;aspect-ratio:480/140;height
 .dash-ctl button{background:#161b22;color:#c9d1d9;border:1px solid #30363d;border-radius:4px;font:11px var(--mono);padding:2px 7px;cursor:pointer}.dash-ctl button.on{background:#1f6feb;border-color:#1f6feb;color:#fff}
 .stage .scene-wrap{flex:0 0 auto;border:0;border-radius:0;border-top:1px solid #30363d}
 .term-wrap{position:relative;min-width:0}
-.term{background:#0d1117;color:#c9d1d9;font-family:var(--mono);font-size:12px;border:1px solid #30363d;border-radius:8px;padding:8px 10px;overflow:auto;position:absolute;inset:6px 0 0 0;box-sizing:border-box}
+.term{background:#0d1117;color:#c9d1d9;font-family:var(--mono);font-size:12px;border:1px solid #30363d;border-radius:8px;padding:8px 10px;overflow:auto;position:absolute;inset:0;box-sizing:border-box}
 .term-head{color:#8b949e;text-transform:uppercase;letter-spacing:.06em;font-size:11px;border-bottom:1px solid #30363d;padding-bottom:4px;margin-bottom:4px}
 .term .ln{white-space:pre-wrap;word-break:break-word;padding:1px 0;line-height:1.4}
 .term .t{color:#8b949e;margin-right:6px}.term .src{color:#79c0ff;margin-right:2px}
 .term .bad .msg{color:#ff7b72}.term .good .msg{color:#7ee787}.term .warn .msg{color:#e3b341}.term .info .msg{color:#79c0ff}.term .dim{color:#8b949e;border-bottom:1px dashed #30363d;margin-bottom:3px;padding-bottom:3px}
-@media (max-width:900px){.split{grid-template-columns:1fr}.stage{height:auto}.dash-area{height:560px}.term-wrap{height:260px}}
+@media (max-width:900px){.split{grid-template-columns:1fr}.stage{height:auto}.dash-area{height:560px}.right{height:auto;grid-template-rows:auto 260px}.tools{max-height:60vh}}
 /* start screen & modal */
 .start{max-width:960px;margin:24px auto}
 .start h1{font-size:30px;color:var(--accent);margin-bottom:4px}
@@ -1171,7 +1177,7 @@ class World {
     const prev = this.hist.length >= 12 ? this.hist[this.hist.length - 12].loans : this.sysLoansYearStart;
     const cgRaw = this.hist.length >= 12 ? (prev > 0 ? (this.sysLoans() / prev - 1) * 100 : 14) : (this.month <= 1 ? 12 : (this.sysLoans() / prev - 1) * 100 * 12 / Math.max(1, this.month - 1));
     this.sysCreditGrowthAnn = this.month <= 12 ? (this.sysCreditGrowthAnn ?? cgRaw) * 0.8 + cgRaw * 0.2 : cgRaw; // 12 tháng đầu: nối mượt từ số liệu thật sang mô phỏng
-    if (this.mode === 'bank') this.sbvAuto(); else this.processOps();
+    if (this.mode === 'bank' || this.autoSbv) this.sbvAuto(); else this.processOps();
     this.fiscalStep();
     this.macroStep();
     this.updateMarket();
@@ -1220,6 +1226,9 @@ let W = null, tab = 'overview', selectedBank = 0;
 const $ = s => document.querySelector(s);
 const app = $('#app');
 const Clock = { playing: false, speed: 4000, acc: 0, last: 0, raf: false };
+const Auto = { on: false }; // chế độ tự động: máy điều hành thay người chơi
+function toggleAuto() { Auto.on = !Auto.on; const b = $('#autoBtn'); if (b) { b.textContent = '🤖 Tự động: ' + (Auto.on ? 'BẬT' : 'tắt'); b.classList.toggle('on', Auto.on); }
+  if (W) { W.autoSbv = Auto.on && W.mode === 'sbv'; W.addLog(Auto.on ? (W.mode === 'bank' ? 'Bật tự động: máy điều hành ngân hàng theo chính sách AI (neo lãi suất thị trường, tăng trưởng theo room, phát hành giấy tờ có giá, VAMC khi cần); sự kiện và quyết định tự chọn phương án đầu.' : 'Bật tự động: NHNN điều hành theo quy tắc Taylor, tín phiếu khi tỷ giá căng, bán USD giữ biên độ, nới room khi Chính phủ thúc; quyết định tự chọn.') : 'Tắt tự động: bạn điều hành lại.', 'info'); if ($('#toolsBody')) renderTools(); } }
 const Term = { lines: [], body: null };
 function statusOf(ok, warn) { return ok ? 'good' : warn ? 'warn' : 'bad'; }
 function ytdFx(M) { const y0 = M.usdY0 || M.usd; const c = (M.usd / y0 - 1) * 100; return (c >= 0 ? '+' : '') + pp(c, 1); } // thay đổi tỷ giá từ đầu năm
@@ -1524,7 +1533,7 @@ function renderShell() {
     <aside class="side">
       <div class="side-brand">${isBank ? logoSvg(B.spec, 34) : '<span class="side-logo">NHNN</span>'}<div><b>BankSim Việt Nam</b><span class="sub">${isBank ? B.code + ' · ' + B.name : 'Thống đốc NHNN'}</span></div></div>
       <div class="side-clock"><span class="date" id="dateLbl"></span><div class="progress"><i id="prog"></i></div>
-        <div class="ctrl"><button class="btn primary" id="playBtn">▶ Chạy</button><button class="btn" id="nextBtn">+1 tháng</button>
+        <div class="ctrl"><button class="btn primary" id="playBtn">▶ Chạy</button><button class="btn" id="nextBtn">+1 tháng</button><button class="btn" id="autoBtn" title="Máy tự điều hành thay bạn: ngân hàng theo chính sách AI, NHNN theo quy tắc Taylor, tín phiếu, biên độ tỷ giá">🤖 Tự động: tắt</button>
         <select id="speedSel" class="btn" aria-label="Tốc độ"><option value="8000">8 s/tháng</option><option value="4000" selected>4 s/tháng</option><option value="1500">1,5 s/tháng</option><option value="400">0,4 s/tháng</option></select></div></div>
       <nav class="side-nav" id="tabs" aria-label="Điều hướng"></nav>
       <div class="side-kpis" id="kpis"></div>
@@ -1536,7 +1545,10 @@ function renderShell() {
           <div class="dash-area"><canvas id="dashcv" aria-label="Bảng điều khiển"></canvas><div class="dash-ctl" id="dashCtl"></div></div>
           <div class="scene-wrap"><div class="scene-box"><canvas id="scene" width="480" height="140" aria-label="Cảnh trụ sở ngân hàng"></canvas><canvas id="hud" aria-hidden="true"></canvas><div id="evcard" class="evcard" hidden></div></div><div class="mktbar" id="mktbar"></div><div class="ticker-wrap"><div class="ticker" id="ticker"></div></div></div>
         </div>
-        <div class="term-wrap"><div class="term" id="term"><div class="term-head">terminal · nhật ký điều hành · mới nhất ở trên</div><div id="termBody"></div></div></div>
+        <div class="right">
+          <div class="tools" id="tools"><div class="tools-head"><b id="toolsTitle">Điều hành</b><span class="muted small" id="autoNote"></span></div><div id="toolsBody"></div></div>
+          <div class="term-wrap"><div class="term" id="term"><div class="term-head">terminal · nhật ký điều hành · mới nhất ở trên</div><div id="termBody"></div></div></div>
+        </div>
       </div>
       <div class="pane" id="pane"></div>
     </main>
@@ -1545,7 +1557,7 @@ function renderShell() {
   Term.body = $('#termBody'); for (const l of Term.lines) Term.body.prepend(termLine(l));
   if (!Term.lines.length) termPush(W.month, isBank ? `Bạn tiếp quản ${B.name}. Tổng tài sản ${fmt0(B.totalAssets())} tỷ, CAR ${pp(B.car(), 1)}, nợ xấu ${pp(B.nplRatio() * 100, 1)}, room ${B.room}%.` : `Bạn là Thống đốc. Hệ thống 9 ngân hàng, tổng dư nợ ${fmt0(W.sysLoans())} tỷ.`, 'info', 'HỆ THỐNG');
   Scene.init($('#scene'), $('#hud')); Scene.onMonth(); renderDashCtl();
-  $('#playBtn').onclick = togglePlay;
+  $('#playBtn').onclick = togglePlay; $('#autoBtn').onclick = toggleAuto; if (Auto.on) { $('#autoBtn').textContent = '🤖 Tự động: BẬT'; $('#autoBtn').classList.add('on'); }
   $('#speedSel').onchange = e => { Clock.speed = +e.target.value; Clock.acc = Math.min(Clock.acc, Clock.speed); };
   $('#speedSel').value = String(Clock.speed);
   $('#nextBtn').onclick = () => { if (W.pendingEvent && W.pendingEvent.choice) { showEvent(); return; } stepMonth(); };
@@ -1568,7 +1580,9 @@ function loop(ts) {
   requestAnimationFrame(loop);
 }
 function stepMonth() {
+  if (Auto.on) { if (W.mode === 'bank' && W.player && !W.player.dead) W.aiPolicy(W.player); W.autoSbv = W.mode === 'sbv'; } else W.autoSbv = false;
   W.step();
+  if (Auto.on && W.pendingEvent && W.pendingEvent.choice) { const ev = W.pendingEvent; const c = ev.choices[0]; c.apply(W); W.addLog(`Tự động: ${ev.title} → ${c.label}`, 'warn'); ev.autoPicked = c.label; ev.choice = false; ev._choices = ev.choices; }
   const B = W.player;
   if (B) termPush(W.month, `── ${W.dateStr()} · LN ${fmt0(B.lastPnl.net)} tỷ · CAR ${pp(B.car(), 1)} · LDR ${pp(B.ldr(), 0)} · NPL ${pp(B.nplRatio() * 100, 1)} · giải ngân ${fmt0(B.lastDisb || 0)}${B.binds && B.binds.length ? ' (chặn bởi ' + B.binds.join(', ') + ')' : ''}`, 'dim', '');
   else termPush(W.month, `── ${W.dateStr()} · ${W.cyclePhase().name} · CPI ${pp(W.macro.cpi, 1)} · GDP ${pp(W.macro.gdp, 1)} · USD/VND ${fmt0(W.macro.usd)} · tín dụng ${pp(W.sysCreditGrowthAnn, 1)} · NPL ${pp(W.sysNpl() * 100, 1)} · LNH ${pp(W.market.ibON)}`, 'dim', '');
@@ -1579,9 +1593,9 @@ function stepMonth() {
   renderPane();
   const evId = W.pendingEvent ? W.pendingEvent.id : null;
   if (B && B.dead) W.pendingEvent = null; // đã bị kiểm soát đặc biệt: không hỏi thêm sự kiện
-  if (W.pendingEvent) { if (W.pendingEvent.choice) { Clock.playing = false; setPlayBtn(); } showEvent(); }
+  if (W.pendingEvent) { if (W.pendingEvent.choice) { Clock.playing = false; setPlayBtn(); } showEvent(); if (W.pendingEvent === null && evId) { const base = EVENTS.find(e => e.id === evId); if (base && base._choices) { base.choice = true; base.choices = base._choices; delete base._choices; } } }
   if (B && B.dead) { W.decisions = []; if (!B.shownDead) { Clock.playing = false; setPlayBtn(); B.shownDead = true; showModal(B.deadReason.includes('Tổng giám đốc') ? 'Bị thay Tổng giám đốc' : 'Kiểm soát đặc biệt', `<b>${B.name}</b>: ${B.deadReason}. Điểm ${B.score} sau ${W.month} tháng.</p>${postMortem(B)}<p class="small muted">Bản đầy đủ ở tab Nhật ký, có nút sao chép để gửi đi phân tích.`, [{ label: 'Xem lại', apply: () => { tab = 'log'; renderGame(); } }, { label: 'Ván mới', apply: () => { W = null; renderStart(); } }]); } }
-  else { queueDecisions(evId); if (!(W.pendingEvent && W.pendingEvent.choice)) showDecision(); if (B && W.month === 60 && !W.shownEnd) { W.shownEnd = true; Clock.playing = false; setPlayBtn(); const g = B.score >= 60 ? 'Xuất sắc' : B.score >= 30 ? 'Tốt' : B.score >= 0 ? 'Trung bình' : 'Kém'; showModal('Kết thúc nhiệm kỳ 5 năm', `${B.name} sau 60 tháng: tổng tài sản ${fmt0(B.totalAssets())} tỷ, CAR ${pp(B.car(), 1)}, nợ xấu ${pp(B.nplRatio() * 100, 1)}, ROE năm cuối ${pp(B.roeLast ?? 0, 1)}. Điểm CEO ${B.score} → xếp loại ${g}. Bạn có thể tiếp tục nhiệm kỳ hai.`, [{ label: 'Tiếp tục', apply: () => {} }, { label: 'Ván mới', apply: () => { W = null; renderStart(); } }]); } }
+  else { if (Auto.on) { W.decisions = []; } else { queueDecisions(evId); if (!(W.pendingEvent && W.pendingEvent.choice)) showDecision(); } if (B && W.month === 60 && !W.shownEnd) { W.shownEnd = true; Clock.playing = false; setPlayBtn(); const g = B.score >= 60 ? 'Xuất sắc' : B.score >= 30 ? 'Tốt' : B.score >= 0 ? 'Trung bình' : 'Kém'; showModal('Kết thúc nhiệm kỳ 5 năm', `${B.name} sau 60 tháng: tổng tài sản ${fmt0(B.totalAssets())} tỷ, CAR ${pp(B.car(), 1)}, nợ xấu ${pp(B.nplRatio() * 100, 1)}, ROE năm cuối ${pp(B.roeLast ?? 0, 1)}. Điểm CEO ${B.score} → xếp loại ${g}. Bạn có thể tiếp tục nhiệm kỳ hai.`, [{ label: 'Tiếp tục', apply: () => {} }, { label: 'Ván mới', apply: () => { W = null; renderStart(); } }]); } }
 }
 function updateTop() {
   const isBank = W.mode === 'bank'; const B = isBank ? W.player : W.banks[selectedBank]; const S = W.sbv, M = W.macro;
@@ -1618,8 +1632,8 @@ function updateTop() {
 function renderTabs() {
   const isBank = W.mode === 'bank';
   const tabs = isBank
-    ? [['overview', 'Tổng quan'], ['manage', 'Điều hành'], ['report', 'Báo cáo tháng'], ['balance', 'Bảng cân đối & P&L'], ['comply', 'Tuân thủ'], ['system', 'Hệ thống & vĩ mô'], ['log', 'Nhật ký'], ['guide', 'Hướng dẫn']]
-    : [['overview', 'Tổng quan vĩ mô'], ['manage', 'Công cụ NHNN'], ['report', 'Báo cáo tháng'], ['system', 'Các ngân hàng'], ['balance', 'Chi tiết ngân hàng'], ['comply', 'Tuân thủ NH'], ['log', 'Nhật ký'], ['guide', 'Hướng dẫn']];
+    ? [['overview', 'Tổng quan'], ['report', 'Báo cáo tháng'], ['balance', 'Bảng cân đối & P&L'], ['comply', 'Tuân thủ'], ['system', 'Hệ thống & vĩ mô'], ['log', 'Nhật ký'], ['guide', 'Hướng dẫn']]
+    : [['overview', 'Tổng quan vĩ mô'], ['report', 'Báo cáo tháng'], ['system', 'Các ngân hàng'], ['balance', 'Chi tiết ngân hàng'], ['comply', 'Tuân thủ NH'], ['log', 'Nhật ký'], ['guide', 'Hướng dẫn']];
   $('#tabs').innerHTML = tabs.map(t => `<button class="tab ${tab === t[0] ? 'active' : ''}" data-tab="${t[0]}">${t[1]}</button>`).join('');
   $('#tabs').querySelectorAll('.tab').forEach(t => t.onclick = () => { tab = t.dataset.tab; renderTabs(); renderPane(); });
 }
@@ -1637,14 +1651,20 @@ function renderPane() {
     case 'report': pane.innerHTML = reportPane(); break;
     case 'overview': pane.innerHTML = isBank ? overviewBank(B) : overviewSbv(); break;
     case 'balance': pane.innerHTML = balancePane(B); break;
-    case 'manage': pane.innerHTML = isBank ? managePane(B) : sbvPane(); bindManage(B); break;
     case 'comply': pane.innerHTML = complyPane(B); break;
     case 'system': pane.innerHTML = systemPane(); break;
     case 'log': pane.innerHTML = logPane(B); break;
     case 'guide': pane.innerHTML = guidePane(); break;
   }
   pane.querySelectorAll('[data-pick]').forEach(el => el.onclick = () => { selectedBank = +el.dataset.pick; tab = 'balance'; renderGame(); });
+  renderTools();
   drawCharts(B);
+}
+function renderTools() { // cột phải: toàn bộ công cụ điều hành, luôn hiện để thao tác nhanh
+  const body = $('#toolsBody'); if (!body) return; const isBank = W.mode === 'bank'; const B = isBank ? W.player : null;
+  $('#toolsTitle').textContent = isBank ? 'Điều hành ' + B.code : 'Công cụ NHNN';
+  $('#autoNote').textContent = Auto.on ? (isBank ? 'Tự động: máy ghi đè lãi suất, mục tiêu mỗi tháng' : 'Tự động: Taylor, tín phiếu, biên độ tỷ giá') : '';
+  body.innerHTML = isBank ? managePane(B) : sbvPane(); bindManage(B, body);
 }
 
 /* ---------- Tổng quan ngân hàng ---------- */
@@ -1865,9 +1885,10 @@ function managePane(B) {
     </div>
   </div>`;
 }
-function bindManage(B) {
-  if (W.mode === 'sbv') { bindSbv(); return; }
-  $('#pane').querySelectorAll('[data-act]').forEach(btn => btn.onclick = () => {
+function bindManage(B, root) {
+  root = root || $('#toolsBody');
+  if (W.mode === 'sbv') { bindSbv(root); return; }
+  root.querySelectorAll('[data-act]').forEach(btn => btn.onclick = () => {
     const a = btn.dataset.act, arg = JSON.parse(btn.dataset.arg || 'null');
     if (a === 'rate') ACT.rate(B, arg[0], arg[1]); else if (a === 'num') ACT.num(B, ...arg); else if (a === 'mix') ACT.mix(B, arg[0], arg[1]); else if (a === 'preset') ACT.preset(B, arg);
     else if (a === 'issue') ACT.issue(B, arg[0], arg[1]); else if (a === 'raise') ACT.raise(B, arg); else if (a === 'vamc') ACT.vamc(B); else if (a === 'npmkt') ACT.npmkt(B); else if (a === 'anchor') ACT.anchor(B);
@@ -1957,8 +1978,8 @@ function sbvPane() {
     </div>
   </div>`;
 }
-function bindSbv() {
-  const pane = $('#pane');
+function bindSbv(root) {
+  const pane = root || $('#toolsBody');
   pane.querySelectorAll('[data-act]').forEach(btn => btn.onclick = () => {
     const a = btn.dataset.act, arg = JSON.parse(btn.dataset.arg || 'null');
     if (a === 'rateDir') SBV.rateDir(arg); else if (a === 'set') SBV.set(...arg); else if (a === 'toggle') SBV.toggle(arg[0], arg[1]);
@@ -2257,7 +2278,7 @@ function logPane(B) {
 function guidePane() {
   return `<div class="panel guide">
     <h2>Cách chơi</h2>
-    <p>Mỗi lượt là một tháng, chạy thời gian thực. Mọi tham số chỉnh bằng nút bấm ở tab <b>Điều hành</b>; khi một chỉ số vượt ngưỡng hoặc có sự kiện lớn, game tự dừng và đưa ra các lựa chọn xử lý (bạn vẫn có thể chọn "theo dõi thêm"). Engine tính lãi, chuyển nhóm nợ, huy động, giải ngân, cân đối thanh khoản rồi kiểm tra tuân thủ. Mục tiêu: tối đa hóa ROE và điểm CEO trong khi giữ mọi tỷ lệ trong ngưỡng. Vi phạm kéo dài dẫn tới kiểm soát đặc biệt.</p>
+    <p>Mỗi lượt là một tháng, chạy thời gian thực. Mọi tham số chỉnh bằng nút bấm ở cột công cụ bên phải (luôn hiện để thao tác nhanh; nút <b>Tự động</b> ở thanh bên cho máy điều hành thay bạn); khi một chỉ số vượt ngưỡng hoặc có sự kiện lớn, game tự dừng và đưa ra các lựa chọn xử lý (bạn vẫn có thể chọn "theo dõi thêm"). Engine tính lãi, chuyển nhóm nợ, huy động, giải ngân, cân đối thanh khoản rồi kiểm tra tuân thủ. Mục tiêu: tối đa hóa ROE và điểm CEO trong khi giữ mọi tỷ lệ trong ngưỡng. Vi phạm kéo dài dẫn tới kiểm soát đặc biệt.</p>
     <h3>Các ràng buộc theo mô hình Việt Nam</h3>
     <ul>
       <li><b>CAR ≥ 8%</b> (Thông tư 41/2016, Basel II). Vốn tự có / tài sản có rủi ro. BĐS 120%, tiêu dùng 150%, sản xuất 100%, nông nghiệp 80%, TPCP 0%. Cách tăng: giữ lại lợi nhuận, tăng vốn điều lệ, trái phiếu thứ cấp, đổi cơ cấu sang tài sản rủi ro thấp.</li>
@@ -2579,7 +2600,7 @@ function showEvent() {
   const text = typeof ev.text === 'function' ? ev.text(W) : ev.text;
   if (!ev.animated) { ev.animated = true; Scene.playEvent(ev); }
   if (ev.choice) showModal('Sự kiện: ' + ev.title, text, ev.choices.map(c => ({ label: c.label, apply: () => { c.apply(W); W.addLog(`Sự kiện: ${ev.title} → ${c.label}`, 'warn'); W.pendingEvent = null; ev.animated = false; renderGame(); } })));
-  else { showEventCard(ev.title, text); W.pendingEvent = null; ev.animated = false; renderGame(); }
+  else { showEventCard(ev.title, text + (ev.autoPicked ? ' · Tự động chọn: ' + ev.autoPicked : '')); delete ev.autoPicked; W.pendingEvent = null; ev.animated = false; renderGame(); }
 }
 let evCardTimer = null;
 function showEventCard(title, text) {
