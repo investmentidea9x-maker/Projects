@@ -60,6 +60,17 @@ Trò chơi bắt đầu tháng 10/2025 trên nền 45 tháng lịch sử vĩ mô
 - **Chu kỳ nội sinh.** Bất động sản có quán tính, nóng lên khi lãi suất thực thấp và tín dụng nhanh, đổ vỡ khi NHNN thắt chặt; lạm phát đi theo tín dụng, chênh lệch sản lượng và tỷ giá; Fed đi theo chu kỳ Mỹ ~7 năm từng bước 0,25. Pha chu kỳ (Mở rộng, Quá nóng, Thắt chặt, Suy giảm, Phục hồi) được suy ra từ trạng thái và hiển thị khắp nơi.
 - **Sự kiện phát sinh từ trạng thái.** Xác suất mỗi sự kiện tính từ chu kỳ: khủng hoảng trái phiếu chỉ xảy ra khi BĐS nóng và lãi suất tăng; rút tiền hàng loạt khi có ngân hàng yếu; USD rút khi chênh lệch lãi suất âm sâu; sốt vàng khi lạm phát hoặc tỷ giá cao; nới room giữa năm khi lạm phát thấp và tín dụng chậm; Thông tư 02 khi nợ xấu tăng và tăng trưởng yếu. Chỉ các cú sốc bên ngoài (chiến sự, thương mại, thiên tai, suy thoái toàn cầu) giữ xác suất nền nhỏ, nhân theo độ khó.
 
+## Tài khóa: Kho bạc Nhà nước, đầu tư công, trái phiếu Chính phủ, mục tiêu GDP 8%
+
+Khối tài khóa chạy mỗi tháng (tham số xấp xỉ 2025, tỷ VND/năm: thu ngân sách 2.000 nghìn tỷ, chi thường xuyên 1.600, kế hoạch đầu tư công 830 tăng ~15%/năm, phát hành TPCP 480; tất cả trượt theo GDP danh nghĩa):
+
+- **Tiền gửi Kho bạc Nhà nước** tại 4 ngân hàng quốc doanh (VCB 30%, BIDV 32%, CTG 23%, Agribank 15%; khởi đầu 330 nghìn tỷ) là dòng nợ riêng trên bảng cân đối, lãi suất đấu thầu sát thị trường, không tính vào mẫu số LDR. Tồn quỹ = thu + phát hành TPCP − chi thường xuyên − giải ngân đầu tư công; tăng nửa đầu năm, rút mạnh quý 4 khi giải ngân dồn (hồ sơ 3–4–5–6–7–8–8–9–9–10–13–18% kế hoạch). Thay đổi tồn quỹ đi thẳng vào tiền mặt của các ngân hàng quốc doanh, nên thanh khoản hệ thống căng dần về cuối năm.
+- **Chi tiêu và đầu tư công** chảy thành tiền gửi doanh nghiệp, dân cư ở mọi ngân hàng; thuế và TPCP bán cho tổ chức phi ngân hàng rút tiền gửi. Thâm hụt được tài trợ bằng TPCP tạo tiền gửi mới (~1,5%/năm), phần tăng tiền gửi nền đã trừ tương ứng để LDR không trôi.
+- **Trái phiếu Chính phủ**: Kho bạc phát hành đều, tăng 50% khi tồn quỹ dưới 150 nghìn tỷ, giảm một nửa khi trên 500; áp lực cung đẩy lợi suất TPCP lên (+0,8 điểm cho mỗi 100% vượt kế hoạch). Ngân hàng mua theo tỷ trọng TPCP mục tiêu như trước.
+- **Đầu tư công → GDP**: xung lực = giải ngân 12 tháng so với nhịp bình thường (85% kế hoạch), hệ số 1,5 điểm GDP cho mỗi 100% vượt. Bình thường giải ngân đạt ~85% kế hoạch; khi GDP dưới mục tiêu, Chính phủ thúc lên 100% (xung lực ≈ +0,25 điểm GDP).
+- **Mục tiêu GDP 8%** của Chính phủ (tiềm năng mô hình 7,5%): KPI GDP đổi màu theo mục tiêu 8%; điểm Thống đốc cộng 3 khi đạt, 1 khi ≥ 6,5, trừ khi dưới 5,5. Chế độ NHNN có quyết định "GDP dưới mục tiêu 8%" (giảm lãi theo Taylor, nới room, bơm ròng, hoặc để tài khóa gánh). Ở chế độ ngân hàng, NHNN tự động giảm lãi 0,25 điểm mỗi 6 tháng và nới room thêm 1 điểm khi GDP dưới 8% mà CPI dưới 4,5% và tỷ giá ổn. Đẩy tăng trưởng trên tiềm năng làm lạm phát và BĐS nóng: đó là đánh đổi.
+- Hiển thị: bảng "Thị trường/Vĩ mô" có tồn quỹ KBNN, giải ngân tháng/lũy kế/kế hoạch, phát hành TPCP, thâm hụt, mục tiêu GDP; tab Hệ thống có hai biểu đồ tài khóa; bảng cân đối ngân hàng quốc doanh có dòng tiền gửi KBNN; báo cáo tháng có dòng tài khóa.
+
 ## Cơ cấu kỳ hạn: nguồn vốn ngắn hạn, dư nợ trung dài hạn
 
 Thực tế hệ thống ngân hàng Việt Nam có khoảng 80% nguồn vốn là ngắn hạn trong khi ~50% dư nợ là trung dài hạn (NHNN); tiền gửi kỳ hạn dưới 12 tháng chiếm 85–94% tiền gửi qua các năm. Game mô hình hóa đúng bản chất này:
