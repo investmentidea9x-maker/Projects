@@ -91,6 +91,11 @@ Chưa đạt: kịch bản 4 cần phản ứng mạnh hơn với chênh lệch 
 - Hệ số là tham số theo trí nhớ (ước lượng truyền dẫn ở Việt Nam khoảng 0,2–0,5 trong 12 tháng), chỉnh ở `MAC.passFx`. Bảng "Ràng buộc vĩ mô" hiển thị phần CPI do tỷ giá hiện tại và mức sẽ tiến tới; lịch sử tháng ghi `cpiFx`, `fxYoY`; chuỗi nhân quả trong biên niên nêu phần CPI do tỷ giá khi nó đổi ≥ 0,2 điểm.
 - Hệ quả với chính sách: NHNN giữ lãi điều hành thấp nên tỷ giá là kênh lạm phát chính; bán USD và tín phiếu giữ tỷ giá cũng chính là giữ CPI.
 
+## Chu kỳ BĐS đánh vào hệ thống
+
+- Trước: chỉ số nhiệt BĐS tự nhiên dao động 0,62–1,38, nợ xấu BĐS chỉ nhích 1,9 → 2,3%; ép giảm xuống 0,30 cũng chỉ lên 6%, ROE về 0, CAR thấp nhất 7,5 — quá nhẹ so với 2011–2013 hay 2022–2023. Nguyên nhân: PD BĐS chỉ nhạy khi giá dưới 0,7 và tuyến tính yếu; tài sản bảo đảm khấu trừ cố định 50% bất kể giá; nợ cần chú ý chữa lành 20%/tháng kể cả khi đóng băng; GDP chỉ mất 0,5 điểm/điểm chỉ số.
+- Sửa: (1) giá trị khấu trừ tài sản bảo đảm theo giá BĐS (`collOf`: BĐS × chỉ số, ngành khác 60% + 40% × chỉ số) ở cả trích dự phòng, thu hồi sau xóa nợ và giá bán VAMC — giá giảm thì phải trích thêm, thu hồi ít; (2) áp lực nợ xấu BĐS bắt đầu ngay khi giá dưới 1,0 (×4 mỗi điểm) và tăng vọt dưới 0,7 (+×6); (3) dưới 0,85 chủ đầu tư mất thanh khoản: nợ cần chú ý thành nợ xấu nhanh gấp đôi, chữa lành chậm một nửa; (4) GDP mất 1,8 điểm cho mỗi điểm chỉ số dưới 1 (xây dựng, vật liệu, tiêu dùng), cầu vay BĐS co 12 điểm/điểm; (5) chu kỳ sâu hơn: tồn kho kéo giá mạnh hơn (0,3), quán tính 0,5, sàn chỉ số 0,25.
+
 ## Vì sao CAR từng trôi lên, và sửa
 
 - Đo 5 năm (`scratchpad/car.js`): vốn tự có hệ thống tăng 12–21%/năm (ROE 11–19%, cổ tức tiền mặt chỉ 3–30% lợi nhuận, cộng 26k–205k tỷ trái phiếu cấp 2 mỗi năm), trong khi tài sản có rủi ro tăng theo dư nợ: 15–17% hai năm đầu (CAR giữ ~11%), rồi chỉ 7–10% năm 4–5 vì **trần LDR 85% chặn gần hết ngân hàng** (tiền gửi tăng chậm hơn cho vay, cầu tín dụng vẫn 400k so với giải ngân 270k tỷ/tháng). Vốn tiếp tục cộng dồn, RWA chậm lại → CAR 11 → 12,5.

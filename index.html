@@ -491,7 +491,7 @@ class Bank {
   requiredProvision() {
     let spec = 0, gen = 0;
     for (const s of SECTORS) {
-      const b = this.book[s.id]; const c = 1 - s.coll; // phần không được khấu trừ tài sản bảo đảm
+      const b = this.book[s.id]; const c = 1 - this.collOf(s); // phần không được khấu trừ tài sản bảo đảm (giảm khi giá BĐS giảm)
       spec += (b.w * REG.provRates.w + b.g3 * REG.provRates.g3 + b.g4 * REG.provRates.g4 + b.g5 * REG.provRates.g5) * c;
       gen += (b.perf + b.w + b.g3 + b.g4) * REG.genProv / 100;
     }
@@ -515,6 +515,7 @@ class Bank {
   mltSources() { return this.dep.gt12 + this.bonds + this.subBonds + (this.wholesale || 0) * 0.2 + this.totalEquity() - this.fixed - this.otherA * 0.3; }
   shortSources() { return this.dep.casa + this.dep.lt6 + this.dep.m6_12 + this.ibBorrow + this.refi + (this.wholesale || 0) * 0.8; }
   mltRatio() { const stSrc = this.shortSources(); return stSrc > 0 ? Math.max(0, this.mltLoans() - this.mltSources()) / stSrc * 100 : 0; }
+  collOf(s) { const re = (typeof W !== 'undefined' && W && W.macro) ? clamp(W.macro.re, 0.4, 1.2) : 1; return s.coll * (s.id === 're' ? re : 0.6 + 0.4 * re); } // giá trị khấu trừ tài sản bảo đảm đi theo giá BĐS: BĐS đóng băng thì khấu trừ ít đi, phải trích thêm, thu hồi ít hơn
   liqReserve() { const L = this.totalLiab(); const pledged = Math.min(this.gbonds, (this.refi || 0) / 0.9); return L > 0 ? (this.cash + this.reserve + (this.gbonds - pledged) + this.ibLend + (this.bills || 0) + 0.5 * (this.ibStruct || 0) + (this.usdA || 0)) / L * 100 : 0; } // TT22: tiền gửi tại TCTD khác tính một phần; GTCG đã cầm cố vay OMO không còn là tài sản thanh khoản khả dụng (OMO chỉ đổi HQLA lấy tiền 7 ngày, không phải nguồn mới)
   creditGrowthYTD() { return this.loansAtYearStart > 0 ? (this.grossLoans() / this.loansAtYearStart - 1) * 100 : 0; }
   costOfFunds() {
@@ -534,7 +535,7 @@ class Bank {
     const nplG = this.nplGross() * 100; if (nplG > 3) sp += 0.7; if (nplG > 5) sp += 2.0; if (nplG > 8) sp += 2.0; // thị trường 2 nhìn nợ xấu gộp
     if (this.liqReserve() < 10) sp += 1.0;
     if (this.reputation < 0) sp += -this.reputation * 1.5;
-    return sp;
+    return Math.min(6, sp); // quá 6 điểm thì thị trường 2 đã đóng cửa với ngân hàng này (hạn mức vay nhau về sàn 3% tiền gửi)
   }
   addLog(m, msg, cls) { this.log.unshift({ m, msg, cls }); if (this.log.length > 400) this.log.pop(); }
 
@@ -599,14 +600,14 @@ class Bank {
       if (sbv.forbearance) pdm *= 0.8; // Thông tư 02: cơ cấu nợ, giữ nguyên nhóm nợ (nợ xấu 2024 thật vẫn ~2,2%)
       const lat = Math.min(b.perf * 0.5, this.latent[s.id] * rq(0.07)); this.latent[s.id] -= lat; // nợ tiềm ẩn bộc lộ
       const toW = b.perf * rq(pdm) + lat;
-      const wToG3 = b.w * rq(0.25 * (sbv.forbearance ? 0.5 : 1)), wCure = b.w * rq(0.20);
-      const g3To4 = b.g3 * rq(0.30), g3Cure = b.g3 * rq(0.10);
+      const reBust = s.id === 're' ? Math.max(0, 0.85 - M.re) * 2.5 : Math.max(0, 0.7 - M.re) * 1.0; const wToG3 = b.w * rq(Math.min(0.6, 0.25 * (1 + reBust)) * (sbv.forbearance ? 0.5 : 1)), wCure = b.w * rq(0.20 / (1 + reBust)); // BĐS đóng băng: nợ cần chú ý thành nợ xấu nhanh hơn, khó chữa lành
+      const g3To4 = b.g3 * rq(Math.min(0.5, 0.30 * (1 + 0.5 * reBust))), g3Cure = b.g3 * rq(0.10 / (1 + reBust));
       const g4To5 = b.g4 * rq(0.30), g4Rec = b.g4 * rq(sbv.nplLaw ? 0.07 : 0.05); // Luật 96/2025: thu giữ TSBĐ nhanh hơn
       const g5Wo = b.g5 * rq(0.15);
       pnl.ii -= wToG3 * this.sectorRate(s, mkt) / 100 * 0.25; // chuyển nhóm 3: ngừng dự thu và hoàn lại lãi đã ghi nhưng chưa thu (~3 tháng)
       b.perf += -toW + wCure + g3Cure; b.w += toW - wToG3 - wCure;
       b.g3 += wToG3 - g3To4 - g3Cure; b.g4 += g3To4 - g4To5 - g4Rec; b.g5 += g4To5 - g5Wo;
-      const rec = g5Wo * s.coll * (sbv.nplLaw ? 1.0 : 0.8); // thu hồi từ tài sản bảo đảm sau khi xóa nợ (thu nhập khác)
+      const rec = g5Wo * this.collOf(s) * (sbv.nplLaw ? 1.0 : 0.8); // thu hồi từ tài sản bảo đảm sau khi xóa nợ, theo giá BĐS hiện hành
       recovery += rec; writeoff += g5Wo;
       this.cash += rec + g4Rec; custIn += rec + g4Rec; // g4Rec là khách trả nợ gốc, không phải thu nhập
     }
@@ -662,7 +663,7 @@ class Bank {
       const shD = this.mltShare[s.id]; const runoff = b.perf * ((1 - shD) / 9 + shD / 60) * dt;
       // Cầu vay = thay thế nợ đến hạn + nhu cầu tăng thêm; lãi cao hơn thị trường 1 điểm % → cầu giảm ~17%
       const E = Math.exp(-(s.elas ?? 0.18) * (rate - mktRate) - 0.06 * D.comp * Math.max(0, this.pol.lendShort - comp.lendShort)) * stress.demand; // khách tiêu dùng ít nhạy lãi, doanh nghiệp nhạy nhất
-      let d = runoff * (1 - (1 - E) * 0.5) + this.sectorTotal(s.id) * mkt.creditDemand * (15 + (s.id === 're' ? 6 * stress.reHeat : 0)) * q * E * ap.dem; // khách cũ đảo nợ ít nhạy lãi hơn khách mới
+      let d = runoff * (1 - (1 - E) * 0.5) + this.sectorTotal(s.id) * mkt.creditDemand * (15 + (s.id === 're' ? 6 * stress.reHeat - 12 * Math.max(0, 1 - M.re) : 0)) * q * E * ap.dem; // giá BĐS giảm: cầu vay mua nhà và dự án mới co lại // khách cũ đảo nợ ít nhạy lãi hơn khách mới
       demand[s.id] = Math.max(0, d); demTot += demand[s.id];
     }
     const mixSum = sum(Object.values(p.mix)) || 1;
@@ -788,6 +789,7 @@ class Bank {
   issueBonds(amount, sub, W) {
     if (amount <= 0) return 'Số tiền không hợp lệ.';
     if (this.car() < 8 && !sub) return 'Nhà đầu tư từ chối mua vì CAR dưới 8%.';
+    if (this.healthSpread() >= 4) return 'Thị trường từ chối mua giấy tờ có giá của ngân hàng đang yếu (nợ xấu, thanh khoản, uy tín).'; // không có chuyện phát hành bằng mọi giá ở lãi 20%+
     const max = this.totalAssets() * 0.05;
     if (amount > max) return `Thị trường chỉ hấp thụ tối đa ${fmt0(max)} tỷ/tháng (5% tổng tài sản).`;
     if (sub) { if (this.subBonds + amount > this.tier1() * 0.5) return 'Vốn cấp 2 chỉ được tính tối đa 50% vốn cấp 1.'; this.subBonds += amount; }
@@ -811,7 +813,7 @@ class Bank {
   }
   vamcEligible() { // VAMC chỉ mua nợ có tài sản bảo đảm, hồ sơ pháp lý đủ; tối đa 2% dư nợ mỗi đợt
     const EL = { re: 1.0, corp: 0.7, agri: 0.6, cons: 0 }; let face = 0, prov = 0;
-    for (const s of SECTORS) { const b = this.book[s.id]; const e = EL[s.id] ?? 0; const c = 1 - s.coll; face += (b.g4 + b.g5) * e; prov += (b.g4 * 0.5 + b.g5 * 1.0) * c * e; }
+    for (const s of SECTORS) { const b = this.book[s.id]; const e = EL[s.id] ?? 0; const c = 1 - this.collOf(s); face += (b.g4 + b.g5) * e; prov += (b.g4 * 0.5 + b.g5 * 1.0) * c * e; }
     const cap = this.grossLoans() * 0.02; const k = face > cap ? cap / face : 1;
     return { face: face * k, prov: prov * k, k };
   }
@@ -829,7 +831,7 @@ class Bank {
   }
   sellNplMarket(W) { // bán nợ theo giá thị trường (DATC, công ty mua bán nợ): tiền mặt ngay, lỗ ngay
     let face = 0, spec = 0, price = 0;
-    for (const s of SECTORS) { const b = this.book[s.id]; const c = 1 - s.coll; const p = s.id === 'cons' ? 0.25 : 0.55; face += b.g4 + b.g5; spec += (b.g4 * 0.5 + b.g5 * 1.0) * c; price += (b.g4 + b.g5) * p * (s.id === 'cons' ? 1 : (0.5 + s.coll)); b.g4 = 0; b.g5 = 0; }
+    for (const s of SECTORS) { const b = this.book[s.id]; const c = 1 - this.collOf(s); const p = s.id === 'cons' ? 0.25 : 0.55; face += b.g4 + b.g5; spec += (b.g4 * 0.5 + b.g5 * 1.0) * c; price += (b.g4 + b.g5) * p * (s.id === 'cons' ? 1 : (0.5 + s.coll)); b.g4 = 0; b.g5 = 0; }
     if (face < 1) return 'Không có nợ nhóm 4–5 để bán.';
     const loss = face - spec - price; this.prov -= spec; this.cash += price; W.absorbPool = (W.absorbPool || 0) + price; this.equity.retained -= loss; this.pnlYTD.other -= loss; // công ty mua nợ trả bằng tiền gửi // lỗ (hoặc lãi) so với giá trị đã trích lập
     this.addLog(W.month, `Bán ${fmt0(face)} tỷ nợ nhóm 4–5 theo giá thị trường: thu ${fmt0(price)} tỷ tiền mặt (${pp(price / face * 100, 0)} mệnh giá), ${loss >= 0 ? 'lỗ thêm ' + fmt0(loss) : 'hoàn nhập ' + fmt0(-loss)} tỷ so với dự phòng đã trích.`, 'warn');
@@ -1037,7 +1039,7 @@ class World {
   cyclePhase() { return this.PHASES[this.phaseKey || this.rawPhase()]; }
   stressFor(b) {
     const M = this.macro;
-    const reCycle = M.re < 0.7 ? (0.7 - M.re) * 3 : 0; // BĐS đóng băng → nợ xấu BĐS
+    const reCycle = Math.max(0, 1.0 - M.re) * 4 + Math.max(0, 0.7 - M.re) * 6; // giá BĐS dưới bình thường: chủ đầu tư không bán được hàng, nợ xấu BĐS tăng lồi; đóng băng (< 0,7) tăng vọt
     return {
       pd: (1 + 0.1 * Math.max(0, (M.real ?? 1.5) - 1.5) + 0.08 * Math.max(0, 6.5 - M.gdp) + 0.2 * Math.max(0, (M.u ?? MAC.uStar) - MAC.uStar) + (b.type === 'jsb' ? 0.05 : 0) + this.shock('pdAll')) * this.diff.pd, // lãi suất thực cao, tăng trưởng thấp, thất nghiệp tăng → nợ xấu
       re: reCycle + this.shock('re'), reHeat: this.shock('reHeat') + (M.re > 1.2 ? 1 : 0),
@@ -1329,7 +1331,7 @@ class World {
     const wc = this.scripted ? 0 : Math.sin(2 * Math.PI * (this.cyc ? this.cyc.t / this.cyc.period : 0)); this.worldCycle = wc; // backtest: thế giới do kịch bản sự kiện thật thay cho sóng tổng hợp // +1 thế giới tăng trưởng, vốn vào; −1 suy giảm, rút vốn
     const nplSys = this.sysNpl() * 100; const lolr = ((this.sysLolr || 0) + (this.sysSp || 0)) / Math.max(1, this.sysDeposits()) * 100; // tái cấp vốn đặc biệt đang treo (% tiền gửi)
     const gTarget = MAC.gStar - MAC.aR * (M.realLend - MAC.lendStar) + MAC.aC * (cg - MAC.cgStar) - 0.1 * Math.max(0, M.fedRate - 4) + MAC.aG * (this.fiscal ? this.fiscal.impulse : 0) + this.shock('gdp')
-      + 1.1 * wc + 0.5 * (M.re - 1) - 0.4 * Math.max(0, nplSys - 2.5) - 0.02 * Math.max(0, cg - 12) - MAC.aP * Math.max(0, M.cpi - MAC.cpiHurt); // lạm phát cao bào mòn thu nhập thực, tiêu dùng yếu → GDP sụt; chu kỳ thế giới; BĐS nóng kéo xây dựng, tiêu dùng; nợ xấu cao làm tín dụng và đầu tư co lại
+      + 1.1 * wc + (M.re >= 1 ? 0.5 * (M.re - 1) : -1.8 * (1 - M.re)) - 0.4 * Math.max(0, nplSys - 2.5) - 0.02 * Math.max(0, cg - 12) - MAC.aP * Math.max(0, M.cpi - MAC.cpiHurt); // lạm phát cao bào mòn thu nhập thực, tiêu dùng yếu → GDP sụt; chu kỳ thế giới; BĐS nóng kéo xây dựng, tiêu dùng; nợ xấu cao làm tín dụng và đầu tư co lại
     M.gdp += MAC.lam * dt * (gTarget - M.gdp) + noise();
     // Phillips: lạm phát theo khoảng cách sản lượng, tiền tệ, tỷ giá, neo kỳ vọng và cú sốc cung
     const m2Lag = this.hist.length >= 9 && this.hist[this.hist.length - 9].m2 != null ? this.hist[this.hist.length - 9].m2 : M.m2; // cung tiền → giá trễ 6–12 tháng
@@ -1347,9 +1349,9 @@ class World {
     M.usd = Math.round(M.usd * (1 + M.fx / 1200 * dt)); // tỷ giá tuyệt đối VND/USD trượt theo áp lực
     // Bất động sản: lãi suất thực thấp và tín dụng nhanh làm nóng; có quán tính nên tạo chu kỳ bùng nổ – đổ vỡ
     const realRate = S.refi - M.cpi; const mom = M.re - M.rePrev; M.rePrev = M.re;
-    M.reSup = (M.reSup ?? 0.15) + (0.10 * (M.re - 1) - 0.03 * M.reSup) * dt; // nóng → chủ đầu tư xây nhiều → tồn kho; giá hạ → dừng xây → tồn kho được hấp thụ
-    M.re += (0.035 * (1 - M.re) - 0.02 * (realRate - 1.0) + 0.006 * (cg - 9.5) - 0.2 * M.reSup + 0.02 * wc + this.shock('reDrift')) * dt + 0.4 * mom + noise() * 0.4;
-    M.re = clamp(M.re, 0.3, 1.9);
+    M.reSup = (M.reSup ?? 0.15) + (0.12 * (M.re - 1) - 0.03 * M.reSup) * dt; // nóng → chủ đầu tư xây nhiều → tồn kho; giá hạ → dừng xây → tồn kho được hấp thụ
+    M.re += (0.035 * (1 - M.re) - 0.02 * (realRate - 1.0) + 0.006 * (cg - 9.5) - 0.3 * M.reSup + 0.03 * wc + this.shock('reDrift')) * dt + 0.5 * mom + noise() * 0.4; // chu kỳ BĐS sâu hơn: tồn kho kéo giá lâu hơn, quán tính mạnh hơn
+    M.re = clamp(M.re, 0.25, 1.9);
     // Chu kỳ Mỹ: mục tiêu lãi suất Fed theo sóng ~7 năm; Fed đi từng bước 0,25 mỗi quý (sự kiện fed/fedhike thông báo)
     if (this.newMonth) { this.us.t++; this.us.target = 3.5 + 1.75 * Math.sin(2 * Math.PI * this.us.t / this.us.period); if (this.cyc) this.cyc.t++; }
     // M2 tính từ bảng cân đối (tiền gửi + tiền mặt), cập nhật ở beginMonth; không còn là biến độc lập
