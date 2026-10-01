@@ -115,6 +115,15 @@ Chưa đạt: kịch bản 4 cần phản ứng mạnh hơn với chênh lệch 
 - Phương trình IS có thêm `− aP × max(0, CPI − cpiHurt)` với `cpiHurt` 4,5 và `aP` 0,5: lạm phát trên 4,5% bào mòn thu nhập thực, tiêu dùng yếu, GDP mất 0,5 điểm mỗi điểm CPI vượt ngưỡng (tham số). Vì lãi điều hành bị giữ thấp, đây là ràng buộc thật của mục tiêu 8%: để tỷ giá trượt → CPI lên → GDP mất.
 - Sốc chính trị, thương mại đánh vào tỷ giá mạnh hơn nhiều: vốn rút mỗi tháng (`cap`) Chiến sự Trung Đông 2,5 tỷ USD, Thuế quan Mỹ 1,6, Chiến tranh thương mại 1,8, Suy thoái toàn cầu 2,0, USD rút ròng 3,0; FDI giải ngân cắt 50–80%. Vị thế ngoại tệ của ngân hàng (~3 tỷ) hấp thụ hết trong tháng đầu, sau đó NHNN phải bán hoặc tỷ giá trượt.
 
+## Sửa theo bản rà soát vĩ mô (New Keynesian)
+
+1. **Cầu tín dụng có trễ với lãi vay**: dùng lãi vay bình quân ba tháng gần nhất thay vì lãi hiện hành (`creditDemand`); hệ số GDP nâng 0,08 → 0,12 vì chu kỳ tín dụng Việt Nam biến động mạnh hơn GDP.
+2. **Xung lực tín dụng** `aC` 0,06 → 0,09 (tín dụng/GDP ~130%).
+3. **Sự kiện giá hành chính** (`admin_price`): điều chỉnh giá điện, viện phí, học phí khi CPI còn dưới 3,8%, cộng 0,45 điểm CPI rải trong 12 tháng, cách nhau ít nhất 12 tháng.
+4. **Tiềm năng tăng trưởng nội sinh** `M.gStar` (6,0–7,5, khởi điểm 7,0): đi dần về 6,75 + FDI kỷ lục 0,3 + xung lực đầu tư công tới 0,25 + tín dụng cho sản xuất tới 0,1 − nợ xấu cao − BĐS đóng băng; dùng trong IS, khoảng cách sản lượng, Okun, pha "hồi phục", đường nét đứt trên đồ thị. Mục tiêu 8% của Chính phủ (`gGoal`) giữ nguyên nên khoảng cách mục tiêu – tiềm năng là thật.
+5. **Chu kỳ thế giới và Fed không còn là hình sin đều**: độ dài và biên độ trôi ngẫu nhiên mỗi tháng (pha cộng dồn), người chơi không đoán được đáy đỉnh.
+6. **Kỳ vọng lạm phát theo uy tín** `M.aE` (0,02–0,10, khởi điểm 0,05): tăng dần khi CPI dưới 4%, giảm mạnh khi vượt 6%; bảng "Ràng buộc vĩ mô" hiển thị hệ số hiện tại.
+
 ## Sửa theo phê bình cơ chế (bản ba)
 
 - **Thiếu hụt là tiền tự có trước OMO.** Thước đo thanh khoản `liq.x` là tiền tại NHNN so với nhu cầu *trước khi* vay OMO; tường thuật nói rõ định nghĩa này. Tiền tự có của hệ thống chỉ giảm qua các kênh trong sổ tiền cơ sở: dân rút tiền mặt (`currency`), Kho bạc gom thuế về NHNN (`treasury` âm), NHNN bán USD (`fx` âm), tín phiếu (`bills` âm), dự trữ bắt buộc tăng theo tiền gửi mới, ngân hàng rời hệ thống; tăng qua NHNN mua USD, tín phiếu đáo hạn, Kho bạc giải ngân, tái cấp vốn, OMO (tiền vay). Sổ này nay được cộng dồn theo tháng vào lịch sử (`hist.ledg`) và tường thuật kể đúng kênh nào rút, kênh nào bơm trong từng pha; câu "cho vay nhanh hơn tiền gửi làm thiếu hụt" bị bỏ, thay bằng "tín dụng tạo tiền gửi, dự trữ bắt buộc tăng theo" và "tiền gửi tăng chậm hơn tín dụng vì rò rỉ ra tiền mặt, Kho bạc, ngoại tệ".
