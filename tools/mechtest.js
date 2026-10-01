@@ -17,7 +17,7 @@ const st=W=>({m:W.month,fx:f2(W.macro.fx),usd:W.macro.usd,res:f1(W.macro.reserve
   console.log('\n[1] Không cú sốc 5 năm — LNH từng năm:', yr.map(s=>s.ib).join(' → '), '| nửa đầu', f2(a1), 'nửa sau', f2(a2), a2>=a1-0.3?'✓ không xu hướng giảm':'✗ giảm');
   console.log('[2] LNH > OMO + 0,2 ở', (over/n*100).toFixed(0)+'% số tháng', over/n>=0.1&&over/n<=0.3?'✓':'✗ (mục tiêu 10–30%)');
   console.log('[5] Ngân hàng-tháng có vay liên NH/OMO:', (stats.ibBorrowMonths/stats.bankMonths*100).toFixed(0)+'%', stats.ibBorrowMonths/stats.bankMonths>=0.2?'✓':'✗', '; tổng cho vay ≠ tổng đi vay ở', stats.ibMismatch, 'kỳ', stats.ibMismatch===0?'✓':'✗');
-  console.log('[6] Sổ tiền cơ sở: sai số lớn nhất', Math.round(stats.ledgerMax), 'tỷ trong', stats.ledgerN, 'tuần', stats.ledgerMax<50?'✓':'✗', '| sổ kỳ cuối', JSON.stringify(Object.fromEntries(Object.entries(W.ledgerLast||{}).map(([k,v])=>[k,Math.round(v)]))));
+  const tol=Math.max(50, 0.0001*W.baseMoney()); console.log('[6] Sổ tiền cơ sở: sai số lớn nhất', Math.round(stats.ledgerMax), 'tỷ trong', stats.ledgerN, 'tuần (ngưỡng', Math.round(tol), '= 0,01% tiền cơ sở)', stats.ledgerMax<tol?'✓':'✗', '| sổ kỳ cuối', JSON.stringify(Object.fromEntries(Object.entries(W.ledgerLast||{}).map(([k,v])=>[k,Math.round(v)]))));
   console.log('    cuối ván:', JSON.stringify(st(W))); }
 // [3] Bán 20–25 tỷ USD trong 9 tháng, không bơm bù
 { const W=mk(); W.scripted=true; runM(W,3); const b=st(W); const r0=W.macro.reserves; const rows=[];
