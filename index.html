@@ -314,13 +314,13 @@ const DIFF = {
 };
 
 /* ---------- Phân khúc cho vay (4 nhóm, giữ đơn giản) ----------
-   spread: phụ trội lãi suất so với lãi cơ sở; rw: hệ số rủi ro (TT41);
+   spread: phụ trội lãi suất so với lãi cơ sở; rw: hệ số rủi ro bình quân (TT41), rwS/rwL: hệ số cho phần ngắn hạn (vốn lưu động) / trung dài hạn (dự án, mua nhà, kinh doanh BĐS 150–200%);
    pd: xác suất nhóm 1 → nhóm 2 mỗi tháng; mlt: tỷ trọng trung dài hạn; coll: tỷ lệ khấu trừ tài sản bảo đảm */
 const SECTORS = [
-  { id: 'corp', name: 'Sản xuất – kinh doanh', spread: 1.5, rw: 1.00, pd: 0.0028, mlt: 0.35, coll: 0.35, reSens: 0.0, fxSens: 0.8, elas: 0.22 },
-  { id: 're',   name: 'BĐS & vay mua nhà',     spread: 2.5, rw: 1.20, pd: 0.0025, mlt: 0.85, coll: 0.50, reSens: 0.8, fxSens: 0.0, elas: 0.15 },
-  { id: 'cons', name: 'Tiêu dùng',             spread: 9.0, rw: 1.50, pd: 0.0070, mlt: 0.40, coll: 0.05, reSens: 0.1, fxSens: 0.2, elas: 0.06 },
-  { id: 'agri', name: 'Nông nghiệp – nông thôn', spread: 1.5, rw: 0.80, pd: 0.0033, mlt: 0.30, coll: 0.25, reSens: 0.0, fxSens: 0.3, capped: true, elas: 0.20 },
+  { id: 'corp', name: 'Sản xuất – kinh doanh', spread: 1.5, rw: 1.00, rwS: 0.90, rwL: 1.25, pd: 0.0028, mlt: 0.35, coll: 0.35, reSens: 0.0, fxSens: 0.8, elas: 0.22 },
+  { id: 're',   name: 'BĐS & vay mua nhà',     spread: 2.5, rw: 1.20, rwS: 1.00, rwL: 1.35, pd: 0.0025, mlt: 0.85, coll: 0.50, reSens: 0.8, fxSens: 0.0, elas: 0.15 },
+  { id: 'cons', name: 'Tiêu dùng',             spread: 9.0, rw: 1.50, rwS: 1.50, rwL: 1.50, pd: 0.0070, mlt: 0.40, coll: 0.05, reSens: 0.1, fxSens: 0.2, elas: 0.06 },
+  { id: 'agri', name: 'Nông nghiệp – nông thôn', spread: 1.5, rw: 0.80, rwS: 0.80, rwL: 0.80, pd: 0.0033, mlt: 0.30, coll: 0.25, reSens: 0.0, fxSens: 0.3, capped: true, elas: 0.20 },
 ];
 const APPETITE = [ // khẩu vị rủi ro 1..5
   { pd: 0.70, dem: 0.70, spread: 0.0, name: 'Rất thận trọng' },
@@ -418,6 +418,7 @@ class Bank {
     const left = rest - this.cash - this.ibStruct; if (left > 0) this.gbonds += left; else this.gbonds += left; // phần còn lại giữ bằng TPCP (tài sản thanh khoản sinh lãi)
     // Hiệu chỉnh tài sản có rủi ro để CAR khởi đầu khớp CAR công bố
     this.ldrAdj = 1; if (spec.ldr0) { const raw = this.ldr(); this.ldrAdj = clamp((spec.ldr0 - (spec.ldrBack || 0)) / Math.max(1, raw), 0.8, 1.05); } // LDR công bố cuối 2025 (các NHTM Nhà nước chạm 83–84,5% vào 3/2026); backtest từ 12/2023 thấp hơn ~2 điểm // LDR công bố theo TT22 (mẫu số có tiền gửi TCTD ≥ 3 tháng, vay dài hạn không mô hình hóa)
+    this.initTenor(spec); // cơ cấu kỳ hạn trước, vì RWA phụ thuộc kỳ hạn
     this.rwaAdj = 1; if (spec.car) this.rwaAdj = clamp((this.tier1() + this.tier2()) / (spec.car / 100) / this.rwa(), 0.6, 1.6);
     // Chính sách điều hành
     this.pol = {
@@ -429,7 +430,6 @@ class Bank {
       anchor: true, spread: { rLt6: 0, rM6_12: 0, rGt12: 0, lendShort: 0, lendMLT: 0 }, // neo theo thị trường, giữ chênh lệch
       mltPref: 1.0, // hệ số kỳ hạn giải ngân mới: >1 cho vay dài hơn (BĐS, dự án), <1 ngắn hơn (vốn lưu động)
     };
-    this.initTenor(spec);
     this.mech = null; // bản ghi cơ chế cho vay & dự trữ của tháng gần nhất
     // trạng thái
     this.loansAtYearStart = this.grossLoans(); this.eqYearStart = this.totalEquity();
@@ -446,7 +446,7 @@ class Bank {
   applyAnchor(mkt, sbv) { // lãi suất = thị trường + chênh lệch người chơi đặt
     const p = this.pol, sp = p.spread;
     p.rLt6 = Math.min(sbv.depCap6m, Math.max(0.5, mkt.lt6 + sp.rLt6)); p.rM6_12 = Math.max(0.5, mkt.m6_12 + sp.rM6_12); p.rGt12 = Math.max(0.5, mkt.gt12 + sp.rGt12);
-    p.lendShort = Math.max(1, mkt.lend - 1.0 + sp.lendShort); p.lendMLT = Math.max(1, mkt.lend + 0.5 + sp.lendMLT);
+    p.lendShort = Math.max(1, (mkt.lendShort ?? mkt.lend - 1.0) + sp.lendShort); p.lendMLT = Math.max(1, (mkt.lendMLT ?? mkt.lend + 0.5) + sp.lendMLT);
   }
   emptyPnl() { return { ii: 0, ie: 0, fee: 0, opex: 0, prov: 0, tax: 0, net: 0, other: 0 }; }
   /* --- tổng hợp --- */
@@ -481,6 +481,9 @@ class Bank {
     const L = sh * (1 / 60 + g), S = (1 - sh) * (1 / 9 + g); const a = L / (L + S);
     return clamp(a * (this.pol.mltPref ?? 1), 0.01, 0.9);
   }
+  tenorNew(s, demand, demL) { // tỷ trọng TDH trong giải ngân mới = sở thích kỳ hạn của ngân hàng (newMltShare × hệ số kỳ hạn), nhưng không xa cơ cấu cầu ngắn/dài của khách quá ±40% (không có cầu dự án thì không ép cho vay dài, và ngược lại)
+    const aD = demand && demand[s.id] > 0 ? demL[s.id] / demand[s.id] : null; const a = this.newMltShare(s); return aD == null ? a : clamp(a, aD * 0.6, Math.min(0.9, Math.max(0.02, aD * 1.4)));
+  }
   mltLoans() { return SECTORS.reduce((a, s) => a + this.sectorTotal(s.id) * (this.mltShare ? this.mltShare[s.id] : s.mlt), 0) + this.concentrated * 0.7; }
   shortLoans() { return this.grossLoans() - this.mltLoans(); }
   deposits() { return this.dep.casa + this.dep.lt6 + this.dep.m6_12 + this.dep.gt12; }
@@ -501,11 +504,12 @@ class Bank {
   genProvision() { return (this.perfLoans() + SECTORS.reduce((a, s) => a + this.book[s.id].g3 + this.book[s.id].g4, 0)) * REG.genProv / 100; }
   rwa() {
     let credit = 0;
-    for (const s of SECTORS) credit += this.sectorTotal(s.id) * s.rw;
+    for (const s of SECTORS) credit += this.sectorTotal(s.id) * this.rwOf(s); // hệ số rủi ro theo cơ cấu kỳ hạn của ngành: cho vay dự án, mua nhà, kinh doanh BĐS nặng vốn hơn vốn lưu động
     credit += this.concentrated * 2.0 + (this.ibLend + (this.ibStruct || 0)) * 0.2 + this.fixed * 1.0 + this.vamc * 0.2 + (this.otherA || 0) * 1.0;
     credit += SECTORS.reduce((a, s) => a + this.book[s.id].g3 + this.book[s.id].g4 + this.book[s.id].g5, 0) * 0.5; // nợ quá hạn chịu hệ số rủi ro cao hơn (TT41: 150%): nợ xấu làm CAR giảm hai lần (dự phòng ăn vốn, RWA tăng)
     return credit * 1.10 * (this.rwaAdj || 1); // + rủi ro hoạt động & thị trường (xấp xỉ 10%), hiệu chỉnh theo CAR công bố
   }
+  rwOf(s) { const sh = this.mltShare ? this.mltShare[s.id] : s.mlt; return (s.rwS ?? s.rw) * (1 - sh) + (s.rwL ?? s.rw) * sh; }
   tier1() { return this.equity.charter + this.equity.retained; }
   tier2() { return Math.min(this.subBonds, this.tier1() * 0.5) + Math.min(this.genProvision(), this.rwa() * 0.0125); }
   car() { const r = this.rwa(); return r > 0 ? (this.tier1() + this.tier2()) / r * 100 : 0; }
@@ -523,12 +527,14 @@ class Bank {
     const tot = this.deposits() + this.bonds + this.subBonds + this.ibBorrow + (this.ibStructL || 0) + this.refi + (this.lolr || 0) + (this.sp0 || 0) + (this.wholesale || 0) + (this.treasury || 0); // cho vay đặc biệt 0% nằm trong mẫu số, không có lãi
     return tot > 0 ? (d.casa * this.pol.rCasa + d.lt6 * p.rLt6 + d.m6_12 * p.rM6_12 + d.gt12 * p.rGt12 + this.bonds * this.bondRate + this.subBonds * (this.bondRate + 1.5) + this.ibBorrow * this.ibRate + (this.ibStructL || 0) * (this.ibRate || 3) + this.refi * this.refiRate + (this.lolr || 0) * ((this.refiRate || 4.5) + 2) + (this.wholesale || 0) * (this.wsRate || 0) + (this.treasury || 0) * (this.tRate || 0)) / tot : 0;
   }
-  sectorRate(s, mkt) {
-    const p = this.pol; const ap = APPETITE[p.appetite - 1];
-    let r = (p.lendShort * (1 - s.mlt) + p.lendMLT * s.mlt) + s.spread + ap.spread;
-    if (s.capped) r = Math.min(p.lendShort, mkt.priorityCap) * 0.25 + (p.lendShort + s.spread + ap.spread) * (1 - s.mlt - 0.25) + (p.lendMLT + s.spread + ap.spread) * s.mlt; // trần LS ưu tiên chỉ áp cho 25% sổ (vay ngắn hạn đúng đối tượng)
-    return r;
+  /* Lãi cho vay theo kỳ hạn: ngắn hạn (vốn lưu động) = lãi ngắn hạn niêm yết + phụ trội ngành + khẩu vị; trung dài hạn (dự án, mua nhà) = lãi TDH niêm yết + phụ trội.
+     Lãi bình quân của ngành = trộn theo cơ cấu kỳ hạn thực tế của ngân hàng ở ngành đó (không phải cơ cấu mặc định). */
+  rateS(s, mkt) {
+    const p = this.pol; const ap = APPETITE[p.appetite - 1]; const r = p.lendShort + s.spread + ap.spread;
+    if (!s.capped) return r; const sh = this.mltShare ? this.mltShare[s.id] : s.mlt; const st = Math.max(0.3, 1 - sh); const w = Math.min(0.25, st) / st; return Math.min(p.lendShort, mkt.priorityCap) * w + r * (1 - w); // trần LS ưu tiên chỉ áp cho 25% sổ (vay ngắn hạn đúng đối tượng)
   }
+  rateL(s) { const p = this.pol; const ap = APPETITE[p.appetite - 1]; return p.lendMLT + s.spread + ap.spread; }
+  sectorRate(s, mkt) { const sh = this.mltShare ? this.mltShare[s.id] : s.mlt; return this.rateS(s, mkt) * (1 - sh) + this.rateL(s) * sh; }
   healthSpread() { // phụ trội lãi suất liên ngân hàng khi ngân hàng yếu
     let sp = 0; const car = this.car(), npl = this.nplRatio() * 100;
     if (car < 9) sp += 1.0; if (car < 8) sp += 2.0;
@@ -657,18 +663,22 @@ class Bank {
 
     /* 5. Giải ngân mới */
     const perfTot = this.perfLoans();
-    const demand = {}; let demTot = 0;
+    /* Cầu vay tách hai kỳ hạn. Ngắn hạn (vốn lưu động): theo sổ ngắn hạn của ngành, nhạy lãi cho vay ngắn hạn. Trung dài hạn (đầu tư, dự án, mua nhà):
+       theo sổ TDH, nhạy lãi dài hạn, giá BĐS và đầu tư công (mỗi đồng vốn ngân sách giải ngân kéo theo ~0,7 đồng vốn vay dự án, chia cho các ngân hàng theo thị phần cho vay doanh nghiệp). */
+    const demand = {}, demL = {}; let demTot = 0; const pubL = (mkt.pubInvL || 0) * dt * this.sectorTotal('corp') / Math.max(1, mkt.corpSys || 1); this._pubL = pubL;
     for (const s of SECTORS) {
-      const b = this.book[s.id];
-      const rate = this.sectorRate(s, mkt); const mktRate = mkt.lend + s.spread + APPETITE[2].spread + 1.5 * s.mlt - 1.0 * (1 - s.mlt); // tham chiếu = thị trường + khẩu vị cân bằng + phụ trội kỳ hạn
-      const shD = this.mltShare[s.id]; const runoff = b.perf * ((1 - shD) / 9 + shD / 60) * dt;
-      // Cầu vay = thay thế nợ đến hạn + nhu cầu tăng thêm; lãi cao hơn thị trường 1 điểm % → cầu giảm ~17%
-      const E = Math.exp(-(s.elas ?? 0.18) * (rate - mktRate) - 0.06 * D.comp * Math.max(0, this.pol.lendShort - comp.lendShort)) * stress.demand; // khách tiêu dùng ít nhạy lãi, doanh nghiệp nhạy nhất
-      let d = runoff * (1 - (1 - E) * 0.5) + this.sectorTotal(s.id) * mkt.creditDemand * (15 + (s.id === 're' ? 6 * stress.reHeat - 12 * Math.max(0, 1 - M.re) : 0)) * q * E * ap.dem; // giá BĐS giảm: cầu vay mua nhà và dự án mới co lại // khách cũ đảo nợ ít nhạy lãi hơn khách mới
-      demand[s.id] = Math.max(0, d); demTot += demand[s.id];
+      const b = this.book[s.id]; const shD = this.mltShare[s.id]; const tot = this.sectorTotal(s.id);
+      const rS = this.rateS(s, mkt), rL = this.rateL(s); const refS = (mkt.lendShort ?? mkt.lend - 1) + s.spread + APPETITE[2].spread, refL = (mkt.lendMLT ?? mkt.lend + 0.5) + s.spread + APPETITE[2].spread; // tham chiếu = thị trường cùng kỳ hạn + khẩu vị cân bằng
+      const compPen = 0.06 * D.comp * Math.max(0, this.pol.lendShort - comp.lendShort); const el = s.elas ?? 0.18; // lãi cao hơn thị trường 1 điểm % → cầu giảm ~17%; khách tiêu dùng ít nhạy lãi, doanh nghiệp nhạy nhất
+      const ES = Math.exp(-el * (rS - refS) - compPen) * stress.demand, EL = Math.exp(-el * (rL - refL) - compPen) * stress.demand;
+      const runS = b.perf * (1 - shD) / 9 * dt, runL = b.perf * shD / 60 * dt;
+      const newS = tot * (1 - shD) * (mkt.creditDemandS ?? mkt.creditDemand) * 15 * q * ES * ap.dem;
+      const newL = (tot * shD * (mkt.creditDemandL ?? mkt.creditDemand) * (15 + (s.id === 're' ? 6 * stress.reHeat - 12 * Math.max(0, 1 - M.re) : 0)) * q + (s.id === 'corp' ? pubL : 0)) * EL * ap.dem; // giá BĐS giảm: cầu vay mua nhà và dự án mới co lại
+      const dS = runS * (1 - (1 - ES) * 0.5) + Math.max(0, newS), dL = runL * (1 - (1 - EL) * 0.5) + Math.max(0, newL); // khách cũ đảo nợ ít nhạy lãi hơn khách mới
+      demand[s.id] = dS + dL; demL[s.id] = dL; demTot += demand[s.id];
     }
     const mixSum = sum(Object.values(p.mix)) || 1;
-    { const roll = runoffTotal + writeoff + (this.vamcRoll || 0); if (demTot < roll) { const k = demTot > 0 ? roll / demTot : 0; for (const s of SECTORS) demand[s.id] = demTot > 0 ? demand[s.id] * k : roll * (p.mix[s.id] / mixSum); demTot = roll; } } // doanh nghiệp luôn cần đảo nợ đến hạn và bù nợ đã xóa: cầu tín dụng không bao giờ thấp hơn mức giữ nguyên dư nợ
+    { const roll = runoffTotal + writeoff + (this.vamcRoll || 0); if (demTot < roll) { const k = demTot > 0 ? roll / demTot : 0; for (const s of SECTORS) { if (demTot > 0) { demand[s.id] *= k; demL[s.id] *= k; } else { demand[s.id] = roll * (p.mix[s.id] / mixSum); demL[s.id] = demand[s.id] * this.mltShare[s.id]; } } demTot = roll; } } // doanh nghiệp luôn cần đảo nợ đến hạn và bù nợ đã xóa: cầu tín dụng không bao giờ thấp hơn mức giữ nguyên dư nợ
     const target = perfTot * Math.max(0, p.growthTarget) * q + runoffTotal + writeoff + (this.vamcRoll || 0); // mục tiêu là tăng trưởng ròng: bù cả nợ đến hạn lẫn nợ đã xóa
     // Phân bổ 2 vòng: vòng 1 theo tỷ trọng mục tiêu, vòng 2 dồn phần chưa dùng sang ngành còn cầu
     let disb = {}; let disbTot = 0; let unused = 0;
@@ -679,9 +689,10 @@ class Bank {
     const gross = this.grossLoans();
     const caps = [];
     const roll = runoffTotal + writeoff + (this.vamcRoll || 0); this.vamcRoll = 0; // sàn giải ngân ở mọi trần: dư nợ không bao giờ co (lãnh đạo luôn đáp ứng nhu cầu vốn của doanh nghiệp; trần chỉ chặn tăng ròng)
-    if (sbv.roomOn) { const roomLeft = this.loansAtYearStart * (1 + this.room / 100) - gross; caps.push({ n: 'room tín dụng', v: Math.max(roll, roomLeft) }); }
+    const pubRoom = sbv.roomOn && W.fiscal && W.fiscal.push >= 1 ? pubL : 0; this._pubRoom = pubRoom; // NHNN định hướng: khi Chính phủ thúc đầu tư công, phần cho vay dự án đi kèm được tính ngoài room (room riêng cho tín dụng dự án)
+    if (sbv.roomOn) { const roomLeft = this.loansAtYearStart * (1 + this.room / 100) - gross + pubRoom; caps.push({ n: 'room tín dụng', v: Math.max(roll, roomLeft) }); }
     const rwaHead = (this.tier1() + this.tier2()) / (Math.max(sbv.carMin - (this.sp0 > 0 ? 3 : 0), Math.max(p.carTarget, sbv.carMin) - (this.sp0 > 0 ? 3 : 0)) / 100) - this.rwa(); // đang được NHNN cho vay đặc biệt 0% theo phương án phục hồi: được tạm cho vay với CAR thấp hơn chuẩn 3 điểm (không siết tín dụng doanh nghiệp)
-    const avgRw = SECTORS.reduce((a, s) => a + s.rw * (p.mix[s.id] / mixSum), 0) * 1.10;
+    const avgRw = SECTORS.reduce((a, s) => { const aL = this.tenorNew(s, demand, demL); return a + ((s.rwS ?? s.rw) * (1 - aL) + (s.rwL ?? s.rw) * aL) * (p.mix[s.id] / mixSum); }, 0) * 1.10; // giải ngân dài hạn nặng vốn hơn (TT41)
     caps.push({ n: 'CAR mục tiêu', v: Math.max(roll, rwaHead / avgRw) }); // thiếu vốn: chặn tăng ròng nhưng vẫn đảo hạn đủ nợ đến hạn (NHNN cho vay đặc biệt bù vốn, không ép co dư nợ làm doanh nghiệp đứt vốn)
     caps.push({ n: 'LDR ' + sbv.ldrMax + '%', v: Math.max(roll, sbv.ldrMax / 100 / (this.ldrAdj || 1) * (this.deposits() + this.bonds + this.subBonds + (this.wholesale || 0) + (this.treasury || 0) * KBNN_LDR) - gross) }); // trần LDR chặn tăng ròng: vượt trần vẫn được đảo hạn ~95% nợ đến hạn (chặn tăng ròng, không bắt co dư nợ đột ngột)
     const reqRes = this.requiredReserve(sbv.rrrShort, sbv.rrrLong);
@@ -695,10 +706,10 @@ class Bank {
     // trần vốn ngắn hạn cho vay TDH
     const mltSrc = this.mltSources(), stSrc = this.shortSources();
     const mltNewCap = Math.max(roll * this.mltLoans() / Math.max(1, gross), mltSrc + stSrc * sbv.mltMax / 100 - this.mltLoans()); // trần vốn ngắn hạn cho vay TDH cũng chỉ chặn tăng ròng, nợ TDH đến hạn vẫn được đảo
-    let mltNew = SECTORS.reduce((a, s) => a + disb[s.id] * f * this.newMltShare(s), 0);
+    let mltNew = SECTORS.reduce((a, s) => a + disb[s.id] * f * this.tenorNew(s, demand, demL), 0);
     let fm = 1; if (mltNew > mltNewCap) { fm = mltNew > 0 ? mltNewCap / mltNew : 1; binds.push('vốn NH cho vay TDH ' + sbv.mltMax + '%'); }
     let newLoans = 0, newMlt = 0;
-    for (const s of SECTORS) { const a = this.newMltShare(s); const xL = disb[s.id] * f * a * fm, xS = disb[s.id] * f * (1 - a); const x = xL + xS; const b = this.book[s.id];
+    for (const s of SECTORS) { const a = this.tenorNew(s, demand, demL); const xL = disb[s.id] * f * a * fm, xS = disb[s.id] * f * (1 - a); const x = xL + xS; const b = this.book[s.id];
       if (b.perf + x > 1) this.mltShare[s.id] = clamp((b.perf * this.mltShare[s.id] + xL) / (b.perf + x), 0.02, 0.98);
       this.secG = this.secG || {}; this.secG[s.id] = clamp((x - (this.lastRunoff ? this.lastRunoff[s.id] : 0)) / Math.max(1, b.perf) / dt, 0, 0.03);
       b.perf += x; newLoans += x; newMlt += xL; this.latent[s.id] += x * Math.max(0, ap.pd - 1) * 0.35 * D.pd + (s.id === 're' ? x * 0.25 * Math.max(0, M.re - 1.15) : 0); } // cho vay BĐS lúc sốt: nợ tiềm ẩn, bộc lộ dần sau một hai năm (7%/tháng)
@@ -715,7 +726,7 @@ class Bank {
     if (dG > 0 && this.cash - dG < reqRes - this.reserve + this.deposits() * p.cashBuffer / 100) dG = 0;
     this.gbonds += dG; this.cash -= dG; W.absorbPool = (W.absorbPool || 0) - dG; // mua TPCP từ tổ chức phi ngân hàng: người bán nhận tiền gửi (bán thì ngược lại)
     this._f = { pnl, reqRes, ibLimit, monthIdx, dt, newLoans, repaid: custIn, recov: recovery, compDep, iiLoan: this._iiLoan - (ii0 - pnl.ii), ieCust: this._ieCust };
-    if (W.newMonth || W.week === 3) W.trace('disb', `${this.code}: cầu ${fmt0(demTot)} mục tiêu ${fmt0(target)} → giải ngân ${fmt0(newLoans)} (nợ đến hạn ${fmt0(runoffTotal)}, xóa ${fmt0(writeoff)}); trần: ${caps.map(c => `${c.n} ${fmt0(c.v)}`).join(', ')}${binds.length ? `; ràng buộc: ${binds.join(', ')}` : ''}; dự phòng thêm ${fmt0(provExp)}`); // chuyển sang pha B sau khi bù trừ thanh toán liên ngân hàng
+    if (W.newMonth || W.week === 3) W.trace('disb', `${this.code}: cầu ${fmt0(demTot)} mục tiêu ${fmt0(target)} → giải ngân ${fmt0(newLoans)} (nợ đến hạn ${fmt0(runoffTotal)}, xóa ${fmt0(writeoff)}); trần: ${caps.map(c => `${c.n} ${fmt0(c.v)}`).join(', ')}${binds.length ? `; ràng buộc: ${binds.join(', ')}` : ''}; kỳ hạn: cầu dài ${fmt0(sum(SECTORS.map(s => demL[s.id])))} (trong đó dự án theo đầu tư công ${fmt0(pubL)}${pubRoom ? ', tính ngoài room' : ''}) → giải ngân TDH ${fmt0(newMlt)} (${pp(newLoans > 0 ? newMlt / newLoans * 100 : 0, 0)}, trần TDH ${fmt0(mltNewCap)}), dư nợ TDH ${pp(this.mltLoans() / Math.max(1, this.grossLoans()) * 100, 1)}; dự phòng thêm ${fmt0(provExp)}`); // chuyển sang pha B sau khi bù trừ thanh toán liên ngân hàng
   }
   flowB(W) { // pha B: dự trữ bắt buộc, vị thế tiền tại NHNN & liên ngân hàng, thuế, lợi nhuận
     if (this.dead || !this._f) return;
@@ -944,6 +955,7 @@ class World {
     { const A = sum(this.banks.map(b => b.ibStruct)), Lw = this.banks.map(b => b.other + b.wholesale + b.ibStructL); const Ls = sum(Lw); // tổng cho vay TCTD khác = tổng đi vay TCTD khác: phân bổ bên nợ theo khả năng (phải trả khác, vay dài hạn)
       for (const b of this.banks) { const i = this.banks.indexOf(b); const target = A * Lw[i] / Ls; const d = target - b.ibStructL; let fromO = Math.min(Math.max(0, d), b.other * 0.8); b.other -= fromO; let rest = d - fromO; if (rest > 0) { b.wholesale -= rest; } else if (d < 0) { b.other += -d; } b.ibStructL = target; } }
     this.initFiscal();
+    this.mbStart = this.baseMoney(); // cửa sổ sổ tiền cơ sở mở ngay từ khởi tạo: hành động trước tuần đầu (người chơi phát hành GTCG, tăng vốn) vẫn được đối chiếu
     for (const b of this.banks) if (b.spec.ldr0) { b.ldrAdj = 1; const raw = b.ldr(); b.ldrAdj = clamp((b.spec.ldr0 - (b.spec.ldrBack || 0)) / Math.max(1, raw), 0.8, 1.1); } // hiệu chỉnh LDR công bố SAU khi đã cân khoản liên ngân hàng cơ cấu và tiền gửi Kho bạc
     this.currency = 0.12 * this.sysDeposits(); this.m2Start = this.sysDeposits() + this.currency; this.macro.m2 = HIST.m2[L]; // tiền mặt ngoài hệ thống ~12% tiền gửi; M2 = tiền gửi + tiền mặt, tăng trưởng tính từ bảng cân đối
     this.player = mode === 'bank' ? this.banks.find(b => b.isPlayer) : null;
@@ -1018,15 +1030,25 @@ class World {
     // Chi phí vốn thực tế của hệ thống (bình quân gia quyền các ngân hàng) → lãi cho vay = chi phí vốn + chi phí hoạt động + rủi ro + thanh khoản + biên
     const cof = this.sysCostOfFunds(gt12, ibON);
     const riskPrem = 0.35 * Math.max(0, this.sysNpl() * 100 - 1.5);
-    const cofL = (this.cofAvg = this.cofAvg == null ? cof : 0.9 * this.cofAvg + 0.1 * cof); const lend = cofL + 1.3 + riskPrem + 0.25 * Math.max(0, tight) + 2.3 - 0.4 * sua + this.diff.nim; // lãi vay mới theo chi phí vốn bình quân (trễ ~10 tuần), không theo neo tức thời // chi phí vốn + chi phí hoạt động + rủi ro + thanh khoản + biên − phần biên ngân hàng nhường theo định hướng giảm lãi cho vay
+    const cofL = (this.cofAvg = this.cofAvg == null ? cof : 0.9 * this.cofAvg + 0.1 * cof); const gtA = (this.gt12Avg = this.gt12Avg == null ? gt12 : 0.9 * this.gt12Avg + 0.1 * gt12); // chi phí vốn bình quân và lãi tiền gửi ≥12T bình quân ~10 tuần (hợp đồng định giá lại theo kỳ)
+    const common = 1.2 + 0.25 * Math.max(0, tight) - 0.4 * sua + this.diff.nim; // chi phí hoạt động + phụ trội thanh khoản − phần biên nhường theo định hướng giảm lãi cho vay
+    const lendShort = cofL + 1.5 + 0.5 * riskPrem + common; // ngắn hạn (vốn lưu động, ≤12 tháng): chi phí vốn bình quân + biên ~1,5; rủi ro ngắn hạn thấp hơn
+    const lendMLT = gtA + 2.5 + riskPrem + common; // trung dài hạn (dự án, mua nhà): lãi tiền gửi ≥12T + 2,5–3, thả nổi theo kỳ hạn 12 tháng; chịu đủ phụ trội rủi ro
+    const wL = this.sysMltShare(alive); const lend = lendShort * (1 - wL) + lendMLT * wL; // lãi vay mới bình quân theo cơ cấu kỳ hạn hệ thống (trước đây là một mặt bằng duy nhất nên cho vay dài không được trả giá cao hơn)
     // Lãi suất thực tế đang áp dụng (quan sát) của hệ thống
     const sysDepR = alive.length ? sum(alive.map(b => b.deposits() * (b.dep.casa * b.pol.rCasa + b.dep.lt6 * b.pol.rLt6 + b.dep.m6_12 * b.pol.rM6_12 + b.dep.gt12 * b.pol.rGt12) / Math.max(1, b.deposits()))) / Math.max(1, sysDep) : m6_12;
     const sysLendR = alive.length ? sum(alive.map(b => SECTORS.reduce((a, sec) => a + b.sectorTotal(sec.id) * b.sectorRate(sec, { lend, priorityCap: REG.priorityCap }), 0))) / Math.max(1, sysLoan) : lend;
-    const Hh = this.hist || []; const lendL = Hh.length >= 2 ? (lend + (Hh[Hh.length - 1].lendNew ?? lend) + (Hh[Hh.length - 2].lendNew ?? lend)) / 3 : lend; // lãi vay bình quân 3 tháng gần nhất
-    this.market = { ibON, lt6, m6_12, gt12, baseLt6: bLt6, baseM6: bM6, baseGt12: bGt12, lend, cof, depSys: sysDepR, lendSys: sysLendR, gbondYield: Math.max(1.5, S.refi - 1.2 + 0.2 * tight + 0.8 * (this.fiscal ? this.fiscal.supply : 0)), depGrowth: 1.8 - 2.5 * Math.max(0, M.cpi - gt12) /* tiền gửi hệ thống sinh ra từ cho vay (bù trừ ở World.clearing), chi ngân sách, NHNN mua USD; phần tự phát là kiều hối (~16 tỷ USD/năm) và vốn FDI giải ngân đổi sang VND (~1,8% tiền gửi/năm ròng); lãi huy động thấp hơn CPI → tiền gửi chảy sang vàng, USD, chứng khoán, BĐS */,
+    const Hh = this.hist || []; const avg3 = (k, cur) => Hh.length >= 2 ? (cur + (Hh[Hh.length - 1][k] ?? cur) + (Hh[Hh.length - 2][k] ?? cur)) / 3 : cur; const lendL = avg3('lendNew', lend), lendS3 = avg3('lendS', lendShort), lendM3 = avg3('lendL', lendMLT); // lãi vay bình quân 3 tháng gần nhất, theo từng kỳ hạn
+    const F = this.fiscal; const dBase = 1 + 0.12 * (M.gdp - 6.5); const dMul = this.shockMul('demand');
+    this.market = { ibON, lt6, m6_12, gt12, baseLt6: bLt6, baseM6: bM6, baseGt12: bGt12, lend, lendShort, lendMLT, cof,
+      creditDemandS: clamp(dBase - 0.12 * (lendS3 - 8.3), 0.5, 1.6) * dMul /* vốn lưu động: nhạy lãi cho vay ngắn hạn 3 tháng gần nhất */,
+      creditDemandL: clamp(dBase - 0.10 * (lendM3 - 10.4) + 0.3 * (F ? F.impulse : 0) + 0.4 * (M.re - 1), 0.5, 1.6) * dMul /* đầu tư, dự án, mua nhà: nhạy lãi dài hạn, xung lực đầu tư công, giá BĐS */,
+      pubInvL: 0.7 * (F && F.cur ? F.cur.I : 0) /* cầu vay TDH đi kèm đầu tư công (tháng): mỗi đồng vốn ngân sách giải ngân kéo ~0,7 đồng vốn vay dự án của nhà thầu, vốn đối ứng, BĐS quanh hạ tầng */,
+      corpSys: sum(alive.map(b => b.sectorTotal('corp'))), mltShSys: wL, depSys: sysDepR, lendSys: sysLendR, gbondYield: Math.max(1.5, S.refi - 1.2 + 0.2 * tight + 0.8 * (this.fiscal ? this.fiscal.supply : 0)), depGrowth: 1.8 - 2.5 * Math.max(0, M.cpi - gt12) /* tiền gửi hệ thống sinh ra từ cho vay (bù trừ ở World.clearing), chi ngân sách, NHNN mua USD; phần tự phát là kiều hối (~16 tỷ USD/năm) và vốn FDI giải ngân đổi sang VND (~1,8% tiền gửi/năm ròng); lãi huy động thấp hơn CPI → tiền gửi chảy sang vàng, USD, chứng khoán, BĐS */,
       creditDemand: clamp(1 + 0.12 * (M.gdp - 6.5) - 0.12 * (lendL - 9.5), 0.5, 1.6) * this.shockMul('demand') /* cầu vay theo lãi vay bình quân 3 tháng gần nhất (hợp đồng đã ký chạy tiếp), nhạy GDP hơn (chu kỳ tín dụng VN biến động mạnh hơn GDP) */, priorityCap: REG.priorityCap };
-    this.trace('market', `updateMarket: neo huy động ${pp(anchor, 2)} (TCV ${pp(S.refi)}, LNH bình quân 8 tuần ${pp(ibA, 2)}, kêu gọi ${Math.round(sua * 100)}%, chênh tín dụng−M2 ${pp(fundGap, 1)}), ngân hàng thiếu nguồn ${Math.round(needy * 100)}%, mặt bằng cơ sở <6T ${pp(bLt6, 2)} 6–12T ${pp(bM6, 2)} ≥12T ${pp(bGt12, 2)}, cho vay mới ${pp(lend, 2)}, cầu tín dụng ×${this.market.creditDemand.toFixed(2)} (lãi vay 3T ${pp(lendL, 2)})`);
+    this.trace('market', `updateMarket: neo huy động ${pp(anchor, 2)} (TCV ${pp(S.refi)}, LNH bình quân 8 tuần ${pp(ibA, 2)}, kêu gọi ${Math.round(sua * 100)}%, chênh tín dụng−M2 ${pp(fundGap, 1)}), ngân hàng thiếu nguồn ${Math.round(needy * 100)}%, mặt bằng cơ sở <6T ${pp(bLt6, 2)} 6–12T ${pp(bM6, 2)} ≥12T ${pp(bGt12, 2)}, cho vay mới ${pp(lend, 2)}, cầu tín dụng ×${this.market.creditDemand.toFixed(2)} (lãi vay 3T ${pp(lendL, 2)}); theo kỳ hạn: cho vay ngắn hạn ${pp(lendShort, 2)} (chi phí vốn ${pp(cofL, 2)} + 1,5 + chung) · TDH ${pp(lendMLT, 2)} (tiền gửi ≥12T ${pp(gtA, 2)} + 2,5 + rủi ro + chung), cầu ngắn ×${this.market.creditDemandS.toFixed(2)} dài ×${this.market.creditDemandL.toFixed(2)}, cầu dự án theo đầu tư công ${fmt0(this.market.pubInvL)}/tháng, dư nợ TDH hệ thống ${pp(wL * 100, 1)}%`);
   }
+  sysMltShare(alive) { const a = alive || this.banks.filter(b => !b.dead); return sum(a.map(b => b.mltLoans())) / Math.max(1, sum(a.map(b => b.grossLoans()))); }
   sysCostOfFunds(gt12, ibON) { // chi phí vốn bình quân toàn hệ thống, an toàn khi chưa có lãi suất đã gán
     const alive = this.banks.filter(b => !b.dead); let cost = 0, fund = 0;
     for (const b of alive) { const p = b.eff || b.pol, d = b.dep;
@@ -1062,7 +1084,7 @@ class World {
   initPolicy(b) { // neo lãi suất khởi đầu theo thị trường, kể cả cho người chơi
     const mkt = this.market, S = this.sbv, p = b.pol, T = { depAdj: b.spec.depAdj ?? TYPES[b.type].depAdj, lendAdj: b.spec.lendAdj ?? TYPES[b.type].lendAdj };
     p.rLt6 = Math.min(S.depCap6m, mkt.lt6 + T.depAdj * 0.5); p.rM6_12 = mkt.m6_12 + T.depAdj; p.rGt12 = mkt.gt12 + T.depAdj + 0.2;
-    p.lendShort = mkt.lend - 1.0 + T.lendAdj; p.lendMLT = mkt.lend + 0.5 + T.lendAdj;
+    p.lendShort = (mkt.lendShort ?? mkt.lend - 1.0) + T.lendAdj; p.lendMLT = (mkt.lendMLT ?? mkt.lend + 0.5) + T.lendAdj;
     p.spread = { rLt6: T.depAdj * 0.5, rM6_12: T.depAdj, rGt12: T.depAdj + 0.2, lendShort: T.lendAdj, lendMLT: T.lendAdj };
     p.growthTarget = b.room; p.gbondTarget = +(b.gbonds / Math.max(1, b.totalAssets()) * 100).toFixed(2); p.gbondBase = p.gbondTarget; // mục tiêu TPCP = tỷ trọng đang nắm (không bán tháo lúc khởi đầu)
   }
@@ -1074,7 +1096,7 @@ class World {
     const mltTight = b.mltRatio() > S.mltMax - 2 ? 0.3 : 0; p.rLt6 = Math.min(S.depCap6m, mkt.baseLt6 + need); p.rM6_12 = mkt.baseM6 + need; p.rGt12 = mkt.baseGt12 + need + 0.2 + mltTight; // kẹt trần vốn ngắn hạn cho vay TDH: cần vốn dài hạn nên trả thêm cho kỳ hạn dài; kẹt LDR: tiền gửi kỳ hạn nào cũng được, nâng đều
     p.rCasa = 0.3;
     const lsp = b.spec.lendAdj ?? TYPES[b.type].lendAdj;
-    p.lendShort = mkt.lend - 1.0 + lsp; p.lendMLT = mkt.lend + 0.5 + lsp;
+    p.lendShort = (mkt.lendShort ?? mkt.lend - 1.0) + lsp; p.lendMLT = (mkt.lendMLT ?? mkt.lend + 0.5) + lsp; // niêm yết theo mặt bằng từng kỳ hạn: ngắn hạn theo chi phí vốn, TDH theo lãi tiền gửi ≥12T
     p.growthTarget = S.roomOn ? Math.max(0, Math.min(b.room + 2, 28)) : 18; // nhắm dùng hết room (thực tế giải ngân luôn hụt vài % so với kế hoạch) // dùng hết room được cấp (2025: room nhiều ngân hàng 20%+, tín dụng hệ thống +19,8%)
     if (b.car() < S.carMin + (S.carBuf || 0) + 0.7) p.growthTarget = Math.min(p.growthTarget, Math.max(6, S.sysRoom * 0.6)); // dưới tối thiểu + bộ đệm: giảm tốc nhưng không dừng (NHNN muốn duy trì tín dụng hỗ trợ GDP)
     if (b.lolr > 0) { p.growthTarget = Math.min(p.growthTarget, Math.max(6, S.sysRoom * 0.6)); p.rM6_12 += 0.3; p.rGt12 += 0.3; } // đang vay NHNN đặc biệt: cho vay chậm lại, trả lãi nhỉnh hơn giữ tiền gửi
@@ -1087,9 +1109,22 @@ class World {
     { const T2 = TYPES[b.type]; const head = b.car() - p.carTarget; p.divRate = (b.lolr > 0 || b.sp0 > 0) ? 0 : head > 1.5 ? Math.max(T2.divRate, 50) : head < 0 ? 0 : T2.divRate; }
     b.ksdb = (b.lolr || 0) > b.deposits() * 0.05; if (b.ksdb) p.growthTarget = 0; // vay NHNN đặc biệt quá 5% tiền gửi: giám sát đặc biệt, không tăng dư nợ, không cổ tức, không gọi vốn thị trường
     this.trace('ai', `aiPolicy ${b.code}: ${tightB ? 'THIẾU NGUỒN' : 'đủ nguồn'} (thiếu tiền NHNN ${b.short ? 'có' : 'không'}, LDR ${pp(b.ldr(), 1)}/${S.ldrMax}, MLT ${pp(b.mltRatio(), 1)}/${S.mltMax}, DTTK ${pp(b.liqReserve(), 1)}, OMO/tiền gửi ${(omoDep * 100).toFixed(1)}%) → phụ trội lãi ${step >= 0 ? '+' : ''}${step.toFixed(2)} = ${b.rateAdj.toFixed(2)}; niêm yết <6T ${pp(p.rLt6, 2)} 6–12T ${pp(p.rM6_12, 2)} ≥12T ${pp(p.rGt12, 2)}; mục tiêu tăng dư nợ ${pp(p.growthTarget, 1)}/năm (room ${b.room}); CAR ${pp(b.car(), 1)} mục tiêu ${pp(p.carTarget, 1)} → cổ tức ${p.divRate}%`); // vốn dư thì trả cổ tức tiền mặt nhiều hơn (cổ đông, Bộ Tài chính đòi), thiếu thì giữ lại: CAR không trôi lên mãi
-    if (b.mltRatio() > S.mltMax - 3 && Math.random() < 0.5) b.issueBonds(b.totalAssets() * 0.005, false, this);
-    { const r = b.mltRatio(), hi = Math.min(S.mltMax - 2, (b.spec.mlt0 ?? 22) + 5), lo = (b.spec.mlt0 ?? 22) - 4; // mỗi ngân hàng giữ hồ sơ kỳ hạn quen thuộc, không đua lên trần
-      if (r > hi) b.pol.mltPref = +Math.max(0.5, b.pol.mltPref - 0.1).toFixed(2); else if (r < lo && b.pol.mltPref < 1.2) b.pol.mltPref = +(b.pol.mltPref + 0.05).toFixed(2); }
+    { /* Kỳ hạn: mục tiêu tỷ trọng dư nợ TDH do NIM quyết định (ga): biên TDH trên nguồn dài cận biên (tiền gửi ≥12T hoặc GTCG) so với biên ngắn hạn trên chi phí vốn bình quân.
+         Trần vốn ngắn hạn cho vay TDH và CAR chỉ là phanh (biên trên). Kẹt trần thì phát hành GTCG 3–5 năm làm nguồn dài thay vì cắt cho vay dài. */
+      const gross = Math.max(1, b.grossLoans()), shL = b.mltLoans() / gross, r = b.mltRatio(), TA = b.totalAssets();
+      const ceil = Math.min(S.mltMax - 2, (b.spec.mlt0 ?? 22) + 6); const carHead = b.car() - p.carTarget; // trần nội bộ: dưới trần NHNN 2 điểm và không xa hồ sơ kỳ hạn quen thuộc quá 6 điểm (quản trị thanh khoản, NSFR nội bộ)
+      const shortCost = 0.5 * p.rLt6 + 0.5 * p.rM6_12 + 0.1, longMarg = Math.max(p.rGt12, mkt.gt12 + 0.8 + b.healthSpread() * 0.5); // nguồn cận biên: tiền gửi <12T mới cho vay ngắn; tiền gửi ≥12T hoặc GTCG mới cho vay dài
+      const useLong = clamp((r - (ceil - 6)) / 6, 0, 1); const longCost = shortCost + (longMarg - shortCost) * useLong; // còn xa trần: cho vay dài bằng vốn ngắn (đúng phần trần MLT cho phép, đây là lực kéo lên); sát trần: phải trả giá nguồn dài
+      const spS = p.lendShort - shortCost, spL = p.lendMLT - longCost, edge = spL - spS;
+      const shCeil = (b.spec.mltLoan ?? 0.5) + 0.05; let tgt = p.mltTarget ?? shL, why; // mô hình kinh doanh không đổi trong một nhiệm kỳ: ngân hàng bán lẻ/nông nghiệp không thành ngân hàng dự án (tỷ trọng TDH tối đa = hồ sơ + 5 điểm)
+      if (r > ceil || carHead < 0) { tgt -= 0.005; why = r > ceil ? 'vốn NH cho vay TDH sát trần nội bộ' : 'CAR dưới mục tiêu'; }
+      else if (edge > 0.3 && carHead > 0.3 && r < ceil - 2 && shL < shCeil) { tgt += 0.003 * Math.min(1.5, edge); why = 'biên TDH cao hơn biên ngắn hạn'; }
+      else if (edge > 0.3 && shL >= shCeil) why = 'biên TDH cao hơn nhưng đã hết khẩu vị kỳ hạn của mô hình kinh doanh';
+      else if (edge < -0.3) { tgt -= 0.003; why = 'biên ngắn hạn cao hơn'; } else why = 'giữ';
+      p.mltTarget = clamp(tgt, 0.25, 0.70); p.mltPref = +clamp(1 + 4 * (p.mltTarget - shL), 0.5, 1.6).toFixed(2);
+      let gtcg = 0; if (r > ceil - 3 && b.bonds < TA * 0.14 && Math.random() < 0.6) { gtcg = TA * 0.005; if (b.issueBonds(gtcg, false, this)) gtcg = 0; } // nguồn dài ngoài tiền gửi: GTCG 3–5 năm khi vốn ngắn hạn cho vay TDH sát trần
+      this.trace('ai', `aiPolicy ${b.code} kỳ hạn: dư nợ TDH ${pp(shL * 100, 1)} → mục tiêu ${pp(p.mltTarget * 100, 1)} (${why}; biên ngắn hạn ${spS.toFixed(2)} = ${pp(p.lendShort, 2)} − nguồn ngắn cận biên ${pp(shortCost, 2)}, biên TDH ${spL.toFixed(2)} = ${pp(p.lendMLT, 2)} − nguồn dài cận biên ${pp(longCost, 2)} (${Math.round(useLong * 100)}% bằng nguồn dài thật, còn lại vốn ngắn trong trần); vốn NH cho vay TDH ${pp(r, 1)}/trần nội bộ ${pp(ceil, 0)}; CAR dư ${carHead.toFixed(1)}) → hệ số kỳ hạn ${p.mltPref}${gtcg ? `; phát hành GTCG ${fmt0(gtcg)} làm nguồn dài` : ''}`);
+    }
     if (b.nplRatio() > 0.045 && Math.random() < 0.3) b.sellToVamc(this);
   }
   /* --- Sốt vàng: tiền mua vàng vẫn là tiền ngân hàng, chỉ đổi chủ và đổi kỳ hạn --- */
@@ -1523,7 +1558,7 @@ class World {
     const alive2 = this.banks.filter(b => !b.dead);
     this.updatePhase();
     this.inStep = false;
-    this.hist.push({ m: this.month, treasury: this.fiscal.treasury, pubInv: this.fiscal.lastI, bondIss: this.fiscal.lastB, deficit: this.fiscal.deficit, gbY: this.market.gbondYield, minCar: alive2.length ? Math.min(...alive2.map(b => b.car())) : 0, maxNpl: alive2.length ? Math.max(...alive2.map(b => b.nplRatio() * 100)) : 0, cpi: this.macro.cpi, cpiFx: this.macro.cpiFx || 0, fxYoY: this.macro.fxYoY ?? this.macro.fx, re: this.macro.re, gdp: this.macro.gdp, u: this.macro.u, gap: this.macro.gap, real: this.macro.real, taylor: this.macro.taylor, fx: this.macro.fx, usd: this.macro.usd, re: this.macro.re, ibON: this.market.ibON, refi: this.sbv.refi, depSys: this.market.depSys, lendSys: this.market.lendSys, cof: this.market.cof, fed: this.macro.fedRate, phase: this.cyclePhase().key, loans: this.sysLoans(), deps: this.sysDeposits(), npl: this.sysNpl() * 100, cg: this.sysCreditGrowthAnn, reserves: this.macro.reserves, m2: this.macro.m2, m2s: this.m2Stock(), bills: this.sbv.billsOut || 0, lendNew: this.market.lend, fxNet: this.sbv.fxNetVnd || 0, mb: this.baseMoney(), liqX: this.liq ? this.liq.x : 0, omoTaken: this.liq ? this.liq.omoTaken : 0, ibLent: this.liq ? this.liq.lent : 0, bankUsd: this.sbv.bankUsd || 0, unmet: this.sbv.unmetM || 0, omo: this.sbv.omo, ledgerErr: this.ledgerErr || 0, shocks: this.shocks.map(x => x.name), soldM: this.sbv.soldM || 0, boughtM: this.sbv.bought || 0, needy: this._needy || 0, fundGap: this._fundGap || 0, gt12: this.market.gt12, nBanks: alive2.length, mltAt: alive2.filter(b => b.mltRatio() > this.sbv.mltMax - 3).length, ldrAt: alive2.filter(b => b.ldr() > this.sbv.ldrMax - 2).length, mltMax: this.sbv.mltMax, ldrMax: this.sbv.ldrMax, worldCycle: this.worldCycle || 0, unmetM: this.sbv.unmetM || 0, omoFill: this.sbv.omoFill ?? 1, takeM: this.sbv.takeM || 0, absM: this.sbv.absM || 0, capOut: this.shock('cap'), fdiCut: Math.min(1, this.shock('fdiCut')), sua: this.sbv.suasion || 0, lolrSys: (this.sysLolr || 0) + (this.sysSp || 0), eased: !!this.sbv.eased, ledg: this.ledgM || {} }); this.ledgM = {}; // sổ tiền cơ sở cộng dồn theo tháng: fx, omo, bills, lolr, treasury, currency, exit
+    this.hist.push({ m: this.month, treasury: this.fiscal.treasury, pubInv: this.fiscal.lastI, bondIss: this.fiscal.lastB, deficit: this.fiscal.deficit, gbY: this.market.gbondYield, minCar: alive2.length ? Math.min(...alive2.map(b => b.car())) : 0, maxNpl: alive2.length ? Math.max(...alive2.map(b => b.nplRatio() * 100)) : 0, cpi: this.macro.cpi, cpiFx: this.macro.cpiFx || 0, fxYoY: this.macro.fxYoY ?? this.macro.fx, re: this.macro.re, gdp: this.macro.gdp, u: this.macro.u, gap: this.macro.gap, real: this.macro.real, taylor: this.macro.taylor, fx: this.macro.fx, usd: this.macro.usd, re: this.macro.re, ibON: this.market.ibON, refi: this.sbv.refi, depSys: this.market.depSys, lendSys: this.market.lendSys, cof: this.market.cof, fed: this.macro.fedRate, phase: this.cyclePhase().key, loans: this.sysLoans(), deps: this.sysDeposits(), npl: this.sysNpl() * 100, cg: this.sysCreditGrowthAnn, reserves: this.macro.reserves, m2: this.macro.m2, m2s: this.m2Stock(), bills: this.sbv.billsOut || 0, lendNew: this.market.lend, lendS: this.market.lendShort, lendL: this.market.lendMLT, mltSh: (this.market.mltShSys ?? 0) * 100, fxNet: this.sbv.fxNetVnd || 0, mb: this.baseMoney(), liqX: this.liq ? this.liq.x : 0, omoTaken: this.liq ? this.liq.omoTaken : 0, ibLent: this.liq ? this.liq.lent : 0, bankUsd: this.sbv.bankUsd || 0, unmet: this.sbv.unmetM || 0, omo: this.sbv.omo, ledgerErr: this.ledgerErr || 0, shocks: this.shocks.map(x => x.name), soldM: this.sbv.soldM || 0, boughtM: this.sbv.bought || 0, needy: this._needy || 0, fundGap: this._fundGap || 0, gt12: this.market.gt12, nBanks: alive2.length, mltAt: alive2.filter(b => b.mltRatio() > this.sbv.mltMax - 3).length, ldrAt: alive2.filter(b => b.ldr() > this.sbv.ldrMax - 2).length, mltMax: this.sbv.mltMax, ldrMax: this.sbv.ldrMax, worldCycle: this.worldCycle || 0, unmetM: this.sbv.unmetM || 0, omoFill: this.sbv.omoFill ?? 1, takeM: this.sbv.takeM || 0, absM: this.sbv.absM || 0, capOut: this.shock('cap'), fdiCut: Math.min(1, this.shock('fdiCut')), sua: this.sbv.suasion || 0, lolrSys: (this.sysLolr || 0) + (this.sysSp || 0), eased: !!this.sbv.eased, ledg: this.ledgM || {} }); this.ledgM = {}; // sổ tiền cơ sở cộng dồn theo tháng: fx, omo, bills, lolr, treasury, currency, exit
     if (this.hist.length > 300) this.hist.shift(); this.wk = [];
   }
   sbvScore() {
@@ -2106,7 +2141,9 @@ function macroTable() {
     <tr><td>Lãi suất huy động thị trường &lt;6th / 6–12th / ≥12th</td><td class="r">${pp(K.lt6)} / ${pp(K.m6_12)} / ${pp(K.gt12)}</td></tr>
     <tr><td>Trần lãi suất huy động &lt;6 tháng</td><td class="r">${pp(S.depCap6m)}</td></tr>
     <tr><td>Lãi suất hệ thống thực tế: huy động bình quân / cho vay bình quân / chi phí vốn</td><td class="r">${pp(K.depSys)} / ${pp(K.lendSys)} / ${pp(K.cof)}</td></tr>
-    <tr><td>Lãi suất cho vay tham chiếu (chi phí vốn + chi phí hoạt động + rủi ro + thanh khoản + biên)</td><td class="r">${pp(K.lend)}</td></tr>
+    <tr><td>Lãi suất cho vay tham chiếu bình quân / ngắn hạn (chi phí vốn + ~1,5) / trung dài hạn (tiền gửi ≥12T + 2,5–3)</td><td class="r">${pp(K.lend)} / ${pp(K.lendShort ?? K.lend)} / ${pp(K.lendMLT ?? K.lend)}</td></tr>
+    <tr><td>Cầu tín dụng ngắn hạn / trung dài hạn (hệ số) · cầu vay dự án đi kèm đầu tư công</td><td class="r">×${(K.creditDemandS ?? K.creditDemand).toFixed(2)} / ×${(K.creditDemandL ?? K.creditDemand).toFixed(2)} · ${fmt0(K.pubInvL || 0)} tỷ/tháng</td></tr>
+    <tr><td>Dư nợ trung dài hạn / tổng dư nợ hệ thống</td><td class="r">${pp((K.mltShSys ?? 0) * 100, 1)}</td></tr>
     <tr><td>Pha chu kỳ (suy ra từ lạm phát, BĐS, tín dụng, lãi suất, nợ xấu)</td><td class="r"><span class="pill ${W.cyclePhase().cls}">${W.cyclePhase().name}</span></td></tr>
     <tr><td>Lợi suất TPCP (áp lực cung ${W.fiscal.supply >= 0 ? '+' : ''}${pp(W.fiscal.supply * 100, 0)})</td><td class="r">${pp(K.gbondYield)}</td></tr>
     <tr><td>Tiền gửi Kho bạc Nhà nước tại NHTM quốc doanh</td><td class="r">${fmt0(W.fiscal.treasury)} tỷ</td></tr>
@@ -2168,7 +2205,7 @@ function overviewSbv() {
 function balancePane(B) {
   const bk = B.book; const row = (l, v, c = '') => `<tr class="${c}"><td>${l}</td><td class="r">${fmt0(v)}</td><td class="r">${pp(v / Math.max(1, B.totalAssets()) * 100, 1)}</td></tr>`;
   const stDep = B.dep.lt6 + B.dep.m6_12;
-  const secRows = SECTORS.map(s => { const b = bk[s.id]; const t = B.sectorTotal(s.id); return `<tr><td>${s.name}</td><td class="r">${fmt0(t)}</td><td class="r">${pp(B.sectorRate(s, W.market))}</td><td class="r">${pp((b.g3 + b.g4 + b.g5) / Math.max(1, t) * 100)}</td><td class="r">${pp(b.w / Math.max(1, t) * 100)}</td><td class="r">${s.rw * 100}%</td></tr>`; }).join('');
+  const secRows = SECTORS.map(s => { const b = bk[s.id]; const t = B.sectorTotal(s.id); return `<tr><td>${s.name}</td><td class="r">${fmt0(t)}</td><td class="r">${pp(B.sectorRate(s, W.market))}</td><td class="r">${pp((b.g3 + b.g4 + b.g5) / Math.max(1, t) * 100)}</td><td class="r">${pp(b.w / Math.max(1, t) * 100)}</td><td class="r">${Math.round(B.rwOf(s) * 100)}% (NH ${Math.round((s.rwS ?? s.rw) * 100)} / TDH ${Math.round((s.rwL ?? s.rw) * 100)})</td></tr>`; }).join('');
   const y = B.pnlYTD;
   const pick = W.mode === 'sbv' ? `<p>Ngân hàng: <select id="pickBank">${W.banks.map((b, i) => `<option value="${i}" ${i === selectedBank ? 'selected' : ''}>${b.name}${b.dead ? ' (KSĐB)' : ''}</option>`).join('')}</select></p>` : '';
   setTimeout(() => { const s = $('#pickBank'); if (s) s.onchange = () => { selectedBank = +s.value; renderGame(); }; }, 0);
@@ -2212,7 +2249,7 @@ const ACT = {
   raise(B, pct) { const e = B.raiseCapital(B.equity.charter * pct / 100, W); if (e) toast(e); },
   vamc(B) { const e = B.sellToVamc(W); if (e) toast(e); },
   npmkt(B) { const e = B.sellNplMarket(W); if (e) toast(e); },
-  anchor(B) { B.pol.anchor = !B.pol.anchor; if (B.pol.anchor) { const K = W.market; const ref = { rLt6: K.lt6, rM6_12: K.m6_12, rGt12: K.gt12, lendShort: K.lend - 1.0, lendMLT: K.lend + 0.5 }; for (const k in ref) B.pol.spread[k] = B.pol[k] - ref[k]; } B.addLog(W.month, `Neo lãi suất theo thị trường: ${B.pol.anchor ? 'bật' : 'tắt'}.`, ''); },
+  anchor(B) { B.pol.anchor = !B.pol.anchor; if (B.pol.anchor) { const K = W.market; const ref = { rLt6: K.lt6, rM6_12: K.m6_12, rGt12: K.gt12, lendShort: K.lendShort ?? K.lend - 1.0, lendMLT: K.lendMLT ?? K.lend + 0.5 }; for (const k in ref) B.pol.spread[k] = B.pol[k] - ref[k]; } B.addLog(W.month, `Neo lãi suất theo thị trường: ${B.pol.anchor ? 'bật' : 'tắt'}.`, ''); },
 };
 const RATE_NAMES = { rCasa: 'Lãi CASA', rLt6: 'Lãi huy động <6 tháng', rM6_12: 'Lãi huy động 6–12 tháng', rGt12: 'Lãi huy động ≥12 tháng', lendShort: 'Lãi cho vay ngắn hạn', lendMLT: 'Lãi cho vay trung dài hạn' };
 const PRESET_NAMES = { corp: 'Doanh nghiệp', re: 'BĐS & mua nhà', retail: 'Bán lẻ tiêu dùng', agri: 'Nông nghiệp', safe: 'Phòng thủ' };
@@ -2234,10 +2271,10 @@ function managePane(B) {
       ${rate('rGt12', `Thị trường ${pp(K.gt12)} · nguồn trung dài hạn`)}
     </div>
     <div class="panel"><h2>Cho vay & khẩu vị rủi ro</h2>
-      ${rate('lendShort', `Thị trường ${pp(K.lend)} · rẻ nhất ${pp(W.compRates(B).lendShort)} · ưu tiên trần ${pp(REG.priorityCap)}`)}
-      ${rate('lendMLT', 'Áp cho phần trung dài hạn + phụ trội ngành')}
+      ${rate('lendShort', `Thị trường ${pp(K.lendShort ?? K.lend)} (chi phí vốn + ~1,5) · rẻ nhất ${pp(W.compRates(B).lendShort)} · ưu tiên trần ${pp(REG.priorityCap)}`)}
+      ${rate('lendMLT', `Thị trường ${pp(K.lendMLT ?? K.lend)} (tiền gửi ≥12T + 2,5–3, thả nổi) · áp cho phần trung dài hạn + phụ trội ngành`)}
       ${num('appetite', 'Khẩu vị rủi ro', 1, 1, 5, '', APPETITE[p.appetite - 1].name + ' · nợ xấu ×' + APPETITE[p.appetite - 1].pd)}
-      ${num('mltPref', 'Kỳ hạn giải ngân mới (hệ số TDH)', 0.1, 0.5, 1.5, '', `TDH ≈ ${Math.round(SECTORS.reduce((a, s) => a + (p.mix[s.id] || 0) * B.newMltShare(s), 0) / Math.max(0.01, SECTORS.reduce((a, s) => a + (p.mix[s.id] || 0), 0)) * 100)}% giải ngân mới · dư nợ TDH ${Math.round(B.mltLoans() / Math.max(1, B.grossLoans()) * 100)}% · ngắn hạn quay vòng 9 tháng, TDH 5 năm`)}
+      ${num('mltPref', 'Kỳ hạn giải ngân mới (hệ số TDH)', 0.1, 0.5, 1.5, '', `TDH ≈ ${Math.round(SECTORS.reduce((a, s) => a + (p.mix[s.id] || 0) * B.newMltShare(s), 0) / Math.max(0.01, SECTORS.reduce((a, s) => a + (p.mix[s.id] || 0), 0)) * 100)}% giải ngân mới · dư nợ TDH ${Math.round(B.mltLoans() / Math.max(1, B.grossLoans()) * 100)}% · ngắn hạn quay vòng 9 tháng, TDH 5 năm · giải ngân TDH không xa cơ cấu cầu ngắn/dài của khách quá ±40%${p.mltTarget != null ? ` · mục tiêu dư nợ TDH ${Math.round(p.mltTarget * 100)}%` : ''}`)}
       ${num('growthTarget', 'Mục tiêu tăng trưởng tín dụng', 2, 0, 40, '%/năm', `Room ${B.room}% · đã dùng ${pp(B.creditGrowthYTD(), 1)}`)}
       ${num('carTarget', 'CAR mục tiêu nội bộ', 0.5, S.carMin, 20, '%', `Hiện ${pp(B.car(), 1)} · tối thiểu ${pp(S.carMin, 1)}`)}
     </div>
