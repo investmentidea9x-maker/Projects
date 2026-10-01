@@ -85,6 +85,12 @@ Chưa đạt: kịch bản 4 cần phản ứng mạnh hơn với chênh lệch 
 - **Ghi sổ ngoài luồng tuần**: `ledgerAdd` gọi ngoài luồng (sự kiện thanh tra phạt, hành động người chơi, khóa sổ) nay ghi vào sổ chờ (`ledgerCarry`) cộng vào tuần kế tiếp; bán dư nợ của ngân hàng bị giám sát chuyển lên trước bù trừ để hai vế khớp trong cùng tuần. Kết quả: 5 năm không sốc (dễ và khó) sai số sổ tuần ≤ 44 tỷ; chạy căng (Fed +2, NPL +1,5% toàn hệ thống và +5% ở hai ngân hàng) còn lệch nhỏ (< 300 tỷ) ở các tuần có sự kiện, lệch lớn chỉ sau khi ngân hàng người chơi rời ván.
 - **Kịch bản căng ở độ khó cao** (harness `nokdb.js`): không ngân hàng nào rời hệ thống, 5–16 lần cho vay đặc biệt 0%, dư nợ hệ thống giữ ngang (giải ngân > đáo hạn nhưng xóa nợ và bán VAMC bù lại), CPI 5–8%, lãi điều hành lên 7–11% sau khi GDP hồi về gần mục tiêu, NHNN nới quy định 0–2 lần tùy ngẫu nhiên. Người chơi ngân hàng chỉ còn một đường thua: ROE kém 3 năm liền bị thay Tổng giám đốc.
 
+## Tỷ giá đi thẳng vào giá cả
+
+- Kinh tế Việt Nam có cấu phần nhập khẩu cao (xăng dầu, nguyên liệu, máy móc, hàng tiêu dùng) nên tỷ giá truyền dẫn trực tiếp vào CPI. Phương trình giá có thêm **phần CPI do tỷ giá** `cpiFx`: tiến dần tới `passFx` 0,35 × mức VND mất giá 12 tháng (`fxYoY`), tốc độ `fxSpeed` 0,2/tháng (khoảng 2/3 sau 5 tháng, gần đủ sau một năm). VND mất giá 5% một năm → thêm ~1,75 điểm CPI; VND lên giá kéo CPI xuống tương ứng. Số hiệu chỉnh cũ (0,02 × max(0, mất giá − 2)) bỏ.
+- Hệ số là tham số theo trí nhớ (ước lượng truyền dẫn ở Việt Nam khoảng 0,2–0,5 trong 12 tháng), chỉnh ở `MAC.passFx`. Bảng "Ràng buộc vĩ mô" hiển thị phần CPI do tỷ giá hiện tại và mức sẽ tiến tới; lịch sử tháng ghi `cpiFx`, `fxYoY`; chuỗi nhân quả trong biên niên nêu phần CPI do tỷ giá khi nó đổi ≥ 0,2 điểm.
+- Hệ quả với chính sách: NHNN giữ lãi điều hành thấp nên tỷ giá là kênh lạm phát chính; bán USD và tín phiếu giữ tỷ giá cũng chính là giữ CPI.
+
 ## Lãi suất điều hành luôn thấp, NHNN hành động theo mục tiêu tăng trưởng 8%+
 
 - Quy tắc tự động của NHNN (`sbvAuto`) không còn tăng lãi theo Taylor, lạm phát hay tình hình hệ thống. Mỗi 3 tháng: GDP dưới mục tiêu 8% → hạ lãi tái cấp vốn 0,25 điểm (0,5 nếu dưới 7%), OMO = TCV − 0,5, tín phiếu = OMO − 0,5, trần lãi ngắn hạn hạ theo; sàn TCV 2,5% (`sbv.refiFloor`). Van an toàn duy nhất: dự trữ ngoại hối dưới 50 tỷ USD và VND vượt biên độ → tăng 0,5.
