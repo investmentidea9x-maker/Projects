@@ -115,6 +115,15 @@ Chưa đạt: kịch bản 4 cần phản ứng mạnh hơn với chênh lệch 
 - Phương trình IS có thêm `− aP × max(0, CPI − cpiHurt)` với `cpiHurt` 4,5 và `aP` 0,5: lạm phát trên 4,5% bào mòn thu nhập thực, tiêu dùng yếu, GDP mất 0,5 điểm mỗi điểm CPI vượt ngưỡng (tham số). Vì lãi điều hành bị giữ thấp, đây là ràng buộc thật của mục tiêu 8%: để tỷ giá trượt → CPI lên → GDP mất.
 - Sốc chính trị, thương mại đánh vào tỷ giá mạnh hơn nhiều: vốn rút mỗi tháng (`cap`) Chiến sự Trung Đông 2,5 tỷ USD, Thuế quan Mỹ 1,6, Chiến tranh thương mại 1,8, Suy thoái toàn cầu 2,0, USD rút ròng 3,0; FDI giải ngân cắt 50–80%. Vị thế ngoại tệ của ngân hàng (~3 tỷ) hấp thụ hết trong tháng đầu, sau đó NHNN phải bán hoặc tỷ giá trượt.
 
+## Mục tiêu lạm phát: CPI phải dưới 4%
+
+- Tham số `MAC.piCap` 4,0 dùng thống nhất: điểm Thống đốc (CPI từ 2 đến dưới 4 được điểm tối đa, dưới 5,5 không điểm, trên thì âm), đèn CPI trên bảng KPI, cảnh báo, sự kiện "Lạm phát không còn dưới mục tiêu 4%", pha "quá nóng" (CPI > 4,5), tường thuật biên niên ("dưới mục tiêu", "vượt mục tiêu", "vượt xa mục tiêu").
+- Phản ứng của NHNN khi CPI chạm 4%: hút tiền qua tín phiếu (0,6–1,4% tiền gửi, càng vượt càng hút), hạn chế bơm OMO (bù 60% thiếu hụt), **tạm dừng hạ lãi điều hành** (vẫn không tăng, trừ van an toàn dự trữ), hãm nới room (xác suất 85% → 50%). Ngưỡng tiêu dùng bị bào mòn (`cpiHurt`) cũng hạ về 4. Neo kỳ vọng dài hạn `piStar` 3,5 giữ nguyên.
+
+## Cuộc đua lãi suất huy động mạnh hơn
+
+- Trước: ngân hàng thiếu nguồn chỉ nâng phụ trội 0,05 điểm/tháng, trần 1,5 điểm, nên lãi huy động tăng rất chậm dù thiếu VND. Nay (`aiPolicy`): thiếu tiền tại NHNN sau OMO (`short`) nâng 0,2 điểm/tháng; kẹt trần LDR hoặc vay OMO quá 3% tiền gửi nâng 0,12; thiếu nguồn khác nâng 0,08; khi quá nửa hệ thống thiếu nguồn, ngân hàng đang niêm yết thấp hơn thị trường cũng nâng 0,04 để không mất tiền gửi (cuộc đua); dư nguồn thì hạ 0,05–0,1; trần phụ trội 2,5 điểm. Lãi thị trường vẫn là bình quân niêm yết theo tiền gửi, nên khi nửa hệ thống đua, mặt bằng kéo lên nhanh như cuối 2022.
+
 ## Lãi suất điều hành luôn thấp, NHNN hành động theo mục tiêu tăng trưởng 8%+
 
 - Quy tắc tự động của NHNN (`sbvAuto`) không còn tăng lãi theo Taylor, lạm phát hay tình hình hệ thống. Mỗi 3 tháng: GDP dưới mục tiêu 8% → hạ lãi tái cấp vốn 0,25 điểm (0,5 nếu dưới 7%), OMO = TCV − 0,5, tín phiếu = OMO − 0,5, trần lãi ngắn hạn hạ theo; sàn TCV 2,5% (`sbv.refiFloor`). Van an toàn duy nhất: dự trữ ngoại hối dưới 50 tỷ USD và VND vượt biên độ → tăng 0,5.
