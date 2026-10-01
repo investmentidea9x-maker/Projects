@@ -1015,7 +1015,7 @@ class World {
     // Lãi suất thực tế đang áp dụng (quan sát) của hệ thống
     const sysDepR = alive.length ? sum(alive.map(b => b.deposits() * (b.dep.casa * b.pol.rCasa + b.dep.lt6 * b.pol.rLt6 + b.dep.m6_12 * b.pol.rM6_12 + b.dep.gt12 * b.pol.rGt12) / Math.max(1, b.deposits()))) / Math.max(1, sysDep) : m6_12;
     const sysLendR = alive.length ? sum(alive.map(b => SECTORS.reduce((a, sec) => a + b.sectorTotal(sec.id) * b.sectorRate(sec, { lend, priorityCap: REG.priorityCap }), 0))) / Math.max(1, sysLoan) : lend;
-    const lendL = this.hist.length >= 2 ? (lend + (this.hist[this.hist.length - 1].lendNew ?? lend) + (this.hist[this.hist.length - 2].lendNew ?? lend)) / 3 : lend; // lãi vay bình quân 3 tháng gần nhất
+    const Hh = this.hist || []; const lendL = Hh.length >= 2 ? (lend + (Hh[Hh.length - 1].lendNew ?? lend) + (Hh[Hh.length - 2].lendNew ?? lend)) / 3 : lend; // lãi vay bình quân 3 tháng gần nhất
     this.market = { ibON, lt6, m6_12, gt12, baseLt6: bLt6, baseM6: bM6, baseGt12: bGt12, lend, cof, depSys: sysDepR, lendSys: sysLendR, gbondYield: Math.max(1.5, S.refi - 1.2 + 0.2 * tight + 0.8 * (this.fiscal ? this.fiscal.supply : 0)), depGrowth: 1.8 - 2.5 * Math.max(0, M.cpi - gt12) /* tiền gửi hệ thống sinh ra từ cho vay (bù trừ ở World.clearing), chi ngân sách, NHNN mua USD; phần tự phát là kiều hối (~16 tỷ USD/năm) và vốn FDI giải ngân đổi sang VND (~1,8% tiền gửi/năm ròng); lãi huy động thấp hơn CPI → tiền gửi chảy sang vàng, USD, chứng khoán, BĐS */,
       creditDemand: clamp(1 + 0.12 * (M.gdp - 6.5) - 0.12 * (lendL - 9.5), 0.5, 1.6) * this.shockMul('demand') /* cầu vay theo lãi vay bình quân 3 tháng gần nhất (hợp đồng đã ký chạy tiếp), nhạy GDP hơn (chu kỳ tín dụng VN biến động mạnh hơn GDP) */, priorityCap: REG.priorityCap };
   }
