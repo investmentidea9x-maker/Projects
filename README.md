@@ -91,6 +91,11 @@ Chưa đạt: kịch bản 4 cần phản ứng mạnh hơn với chênh lệch 
 - Hệ số là tham số theo trí nhớ (ước lượng truyền dẫn ở Việt Nam khoảng 0,2–0,5 trong 12 tháng), chỉnh ở `MAC.passFx`. Bảng "Ràng buộc vĩ mô" hiển thị phần CPI do tỷ giá hiện tại và mức sẽ tiến tới; lịch sử tháng ghi `cpiFx`, `fxYoY`; chuỗi nhân quả trong biên niên nêu phần CPI do tỷ giá khi nó đổi ≥ 0,2 điểm.
 - Hệ quả với chính sách: NHNN giữ lãi điều hành thấp nên tỷ giá là kênh lạm phát chính; bán USD và tín phiếu giữ tỷ giá cũng chính là giữ CPI.
 
+## Vì sao CAR từng trôi lên, và sửa
+
+- Đo 5 năm (`scratchpad/car.js`): vốn tự có hệ thống tăng 12–21%/năm (ROE 11–19%, cổ tức tiền mặt chỉ 3–30% lợi nhuận, cộng 26k–205k tỷ trái phiếu cấp 2 mỗi năm), trong khi tài sản có rủi ro tăng theo dư nợ: 15–17% hai năm đầu (CAR giữ ~11%), rồi chỉ 7–10% năm 4–5 vì **trần LDR 85% chặn gần hết ngân hàng** (tiền gửi tăng chậm hơn cho vay, cầu tín dụng vẫn 400k so với giải ngân 270k tỷ/tháng). Vốn tiếp tục cộng dồn, RWA chậm lại → CAR 11 → 12,5.
+- Sửa ba chỗ: (1) ngân hàng AI chỉ phát hành trái phiếu cấp 2 khi CAR thật sự dưới mục tiêu; (2) cổ tức tiền mặt AI theo dư vốn: CAR cao hơn mục tiêu 1,5 điểm → trả 50% lợi nhuận, dưới mục tiêu → 0, còn lại theo loại hình (SOB 30%, JSB 10%); (3) NHNN nới LDR +2 (tối đa chuẩn + 5) khi ≥ 60% ngân hàng kẹt trần LDR 3 tháng liền trong khi GDP dưới 8%, không cần đợi cuộc đua lãi suất (`ldrBind` trong `regEaseStep`).
+
 ## Dư nợ không bao giờ co; lãi thực âm đẩy vốn sang USD
 
 - **Dư nợ không giảm.** Lãnh đạo luôn đáp ứng nhu cầu vốn của doanh nghiệp, nên ở từng ngân hàng: cầu tín dụng mỗi kỳ không bao giờ thấp hơn nợ đến hạn + nợ đã xóa (doanh nghiệp luôn cần đảo nợ), và mọi trần giải ngân (room, CAR, LDR, thanh khoản, vốn ngắn hạn cho vay TDH) đều có **sàn bằng nợ đến hạn + nợ đã xóa**: trần chỉ chặn tăng ròng, không bao giờ ép co. Trước đây dư nợ có thể giảm vì (1) cầu tín dụng trong pha suy giảm (`demand` < 1) thấp hơn nợ đến hạn, (2) trần LDR chỉ cho đảo 95%, thanh khoản 80%, room 0% khi hết room, (3) trần vốn ngắn hạn cho vay TDH chặn cả phần đảo nợ trung dài hạn. Bán nợ xấu cho VAMC vẫn làm dư nợ sổ sách giảm (đổi sang trái phiếu VAMC), nhưng phần đó được bù ngay kỳ sau qua cầu tối thiểu.
