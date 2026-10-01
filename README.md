@@ -87,7 +87,7 @@ Chưa đạt: kịch bản 4 cần phản ứng mạnh hơn với chênh lệch 
 
 ## Tỷ giá đi thẳng vào giá cả
 
-- Kinh tế Việt Nam có cấu phần nhập khẩu cao (xăng dầu, nguyên liệu, máy móc, hàng tiêu dùng) nên tỷ giá truyền dẫn trực tiếp vào CPI. Phương trình giá có thêm **phần CPI do tỷ giá** `cpiFx`: tiến dần tới `passFx` 0,35 × mức VND mất giá 12 tháng (`fxYoY`), tốc độ `fxSpeed` 0,2/tháng (khoảng 2/3 sau 5 tháng, gần đủ sau một năm). VND mất giá 5% một năm → thêm ~1,75 điểm CPI; VND lên giá kéo CPI xuống tương ứng. Số hiệu chỉnh cũ (0,02 × max(0, mất giá − 2)) bỏ.
+- Kinh tế Việt Nam có cấu phần nhập khẩu cao (xăng dầu, nguyên liệu, máy móc, hàng tiêu dùng) nên tỷ giá truyền dẫn trực tiếp vào CPI. Phương trình giá có thêm **phần CPI do tỷ giá** `cpiFx`: tiến dần tới `passFx` 0,15 × mức VND mất giá 12 tháng (`fxYoY`), tốc độ `fxSpeed` 0,2/tháng (khoảng 2/3 sau 5 tháng, gần đủ sau một năm). VND mất giá 5% một năm → thêm ~1,75 điểm CPI; VND lên giá kéo CPI xuống tương ứng. Số hiệu chỉnh cũ (0,02 × max(0, mất giá − 2)) bỏ.
 - Hệ số là tham số theo trí nhớ (ước lượng truyền dẫn ở Việt Nam khoảng 0,2–0,5 trong 12 tháng), chỉnh ở `MAC.passFx`. Bảng "Ràng buộc vĩ mô" hiển thị phần CPI do tỷ giá hiện tại và mức sẽ tiến tới; lịch sử tháng ghi `cpiFx`, `fxYoY`; chuỗi nhân quả trong biên niên nêu phần CPI do tỷ giá khi nó đổi ≥ 0,2 điểm.
 - Hệ quả với chính sách: NHNN giữ lãi điều hành thấp nên tỷ giá là kênh lạm phát chính; bán USD và tín phiếu giữ tỷ giá cũng chính là giữ CPI.
 
