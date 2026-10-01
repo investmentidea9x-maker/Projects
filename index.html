@@ -1490,7 +1490,7 @@ class World {
     const alive2 = this.banks.filter(b => !b.dead);
     this.updatePhase();
     this.inStep = false;
-    this.hist.push({ m: this.month, treasury: this.fiscal.treasury, pubInv: this.fiscal.lastI, bondIss: this.fiscal.lastB, deficit: this.fiscal.deficit, gbY: this.market.gbondYield, minCar: alive2.length ? Math.min(...alive2.map(b => b.car())) : 0, maxNpl: alive2.length ? Math.max(...alive2.map(b => b.nplRatio() * 100)) : 0, cpi: this.macro.cpi, gdp: this.macro.gdp, u: this.macro.u, gap: this.macro.gap, real: this.macro.real, taylor: this.macro.taylor, fx: this.macro.fx, usd: this.macro.usd, re: this.macro.re, ibON: this.market.ibON, refi: this.sbv.refi, depSys: this.market.depSys, lendSys: this.market.lendSys, cof: this.market.cof, fed: this.macro.fedRate, phase: this.cyclePhase().key, loans: this.sysLoans(), deps: this.sysDeposits(), npl: this.sysNpl() * 100, cg: this.sysCreditGrowthAnn, reserves: this.macro.reserves, m2: this.macro.m2, m2s: this.m2Stock(), bills: this.sbv.billsOut || 0, lendNew: this.market.lend, fxNet: this.sbv.fxNetVnd || 0, mb: this.baseMoney(), liqX: this.liq ? this.liq.x : 0, omoTaken: this.liq ? this.liq.omoTaken : 0, ibLent: this.liq ? this.liq.lent : 0, bankUsd: this.sbv.bankUsd || 0, unmet: this.sbv.unmetM || 0, omo: this.sbv.omo, ledgerErr: this.ledgerErr || 0 });
+    this.hist.push({ m: this.month, treasury: this.fiscal.treasury, pubInv: this.fiscal.lastI, bondIss: this.fiscal.lastB, deficit: this.fiscal.deficit, gbY: this.market.gbondYield, minCar: alive2.length ? Math.min(...alive2.map(b => b.car())) : 0, maxNpl: alive2.length ? Math.max(...alive2.map(b => b.nplRatio() * 100)) : 0, cpi: this.macro.cpi, gdp: this.macro.gdp, u: this.macro.u, gap: this.macro.gap, real: this.macro.real, taylor: this.macro.taylor, fx: this.macro.fx, usd: this.macro.usd, re: this.macro.re, ibON: this.market.ibON, refi: this.sbv.refi, depSys: this.market.depSys, lendSys: this.market.lendSys, cof: this.market.cof, fed: this.macro.fedRate, phase: this.cyclePhase().key, loans: this.sysLoans(), deps: this.sysDeposits(), npl: this.sysNpl() * 100, cg: this.sysCreditGrowthAnn, reserves: this.macro.reserves, m2: this.macro.m2, m2s: this.m2Stock(), bills: this.sbv.billsOut || 0, lendNew: this.market.lend, fxNet: this.sbv.fxNetVnd || 0, mb: this.baseMoney(), liqX: this.liq ? this.liq.x : 0, omoTaken: this.liq ? this.liq.omoTaken : 0, ibLent: this.liq ? this.liq.lent : 0, bankUsd: this.sbv.bankUsd || 0, unmet: this.sbv.unmetM || 0, omo: this.sbv.omo, ledgerErr: this.ledgerErr || 0, shocks: this.shocks.map(x => x.name), soldM: this.sbv.soldM || 0, boughtM: this.sbv.bought || 0, needy: this._needy || 0, fundGap: this._fundGap || 0, gt12: this.market.gt12, nBanks: alive2.length, mltAt: alive2.filter(b => b.mltRatio() > this.sbv.mltMax - 3).length, ldrAt: alive2.filter(b => b.ldr() > this.sbv.ldrMax - 2).length, mltMax: this.sbv.mltMax, ldrMax: this.sbv.ldrMax, worldCycle: this.worldCycle || 0, sua: this.sbv.suasion || 0, lolrSys: (this.sysLolr || 0) + (this.sysSp || 0), eased: !!this.sbv.eased });
     if (this.hist.length > 300) this.hist.shift(); this.wk = [];
   }
   sbvScore() {
@@ -2670,6 +2670,51 @@ function chronPath(s0, H, maxSegs = 7) { // câu tường thuật đường đi 
   const ext = segs.length > 1 ? ` Đỉnh ${s.f(v[iMax])} (${d(iMax)}), đáy ${s.f(v[iMin])} (${d(iMin)}).` : '';
   return `${s.name}: ${s.f(v[0])} tại ${d(0)}, ${parts.join('; rồi ')}.${ext}`;
 }
+function chronCause(c, H, g) { // chuỗi nhân quả của một chương: nguyên nhân bên ngoài → USD → VND tại NHNN → liên ngân hàng → NHNN → tỷ lệ an toàn → đua huy động → cho vay → tín dụng, GDP, giá
+  const rows = H.slice(g.i0, g.i1 + 1); if (rows.length < 2) return ''; const a = rows[0], b = rows[rows.length - 1]; const n = rows.length; const f1 = v => pp(v, 1), f2 = v => pp(v, 2);
+  const sg = x => (x >= 0 ? '+' : '') + pp(x, 1); const S = sum, avg = k => S(rows.map(r => r[k] || 0)) / n, tot = k => S(rows.map(r => r[k] || 0)), mx = k => Math.max(...rows.map(r => r[k] || 0));
+  const sold = tot('soldM'), bought = tot('boughtM'), fxNet = tot('fxNet'); const dUsd = (b.usd / Math.max(1, a.usd) - 1) * 100, dRes = b.reserves - a.reserves; const diffR = avg('fed') - avg('ibON');
+  const shocks = {}; rows.forEach(r => (r.shocks || []).forEach(s => shocks[s] = (shocks[s] || 0) + 1)); const shk = re => Object.keys(shocks).filter(s => re.test(s));
+  const outShk = shk(/Trung Đông|Suy thoái|Thuế quan|Chiến tranh|USD rút|Trump/), inShk = shk(/FDI/), wc = avg('worldCycle'); const low = a => a.join(', ');
+  const dIb = b.ibON - a.ibON, dBills = (b.bills || 0) - (a.bills || 0), aboveOmo = rows.filter(r => r.ibON > (r.omo ?? 4) + 0.2).length; const x0 = a.liqX ?? 0, x1 = b.liqX ?? 0;
+  const nB = mx('nBanks') || 9, mltAt = mx('mltAt'), ldrAt = mx('ldrAt'), needy = avg('needy'), fundGap = avg('fundGap'); const dG = (b.gt12 ?? b.depSys) - (a.gt12 ?? a.depSys), dDep = b.depSys - a.depSys, dCof = b.cof - a.cof, dLend = b.lendSys - a.lendSys;
+  const dLoans = (b.loans / Math.max(1, a.loans) - 1) * 100, dDeps = (b.deps / Math.max(1, a.deps) - 1) * 100; const hikes = rows.filter((r, i) => i && r.refi > rows[i - 1].refi).length, cuts = rows.filter((r, i) => i && r.refi < rows[i - 1].refi).length;
+  const dLolr = (b.lolrSys || 0) - (a.lolrSys || 0); const suaAvg = avg('sua'); const eased = rows.some(r => r.eased) ; const P = [];
+  let flow = 0; // +1 USD vào, −1 USD ra (để nối câu)
+  // 1. Kênh ngoại tệ
+  if (sold >= 1) { flow = -1; const why = outShk.length ? `do ${low(outShk)} (dòng vốn tìm nơi trú ẩn, doanh nghiệp găm giữ USD)` : diffR > 0.5 ? `do Fed ${f2(avg('fed'))} cao hơn liên ngân hàng VND ${f2(avg('ibON'))}, giữ USD có lợi hơn giữ VND` : wc < -0.3 ? 'do thế giới vào pha rủi ro, vốn rút khỏi thị trường mới nổi' : 'do cầu ngoại tệ nhập khẩu và trả nợ vượt cung';
+    P.push(`USD rút ròng khỏi hệ thống ${why}: VND mất giá ${f1(dUsd)} trong chương, NHNN giữ tỷ giá nên bán ${fmt1(sold)} tỷ USD (dự trữ ${fmt1(a.reserves)} → ${fmt1(b.reserves)} tỷ USD), tức rút ${fmt0(Math.max(0, -fxNet))} tỷ VND khỏi tiền gửi và tiền tại NHNN của các ngân hàng.`); }
+  else if (bought >= 1) { flow = 1; const why = inShk.length ? `nhờ ${low(inShk)}` : diffR < -0.5 ? `nhờ lãi VND ${f2(avg('ibON'))} cao hơn Fed ${f2(avg('fed'))}, giữ VND có lợi` : wc > 0.3 ? 'nhờ thế giới thuận, vốn vào thị trường mới nổi' : 'nhờ xuất khẩu, kiều hối và FDI vượt cầu nhập khẩu';
+    P.push(`USD vào ròng ${why}: NHNN mua ${fmt1(bought)} tỷ USD (dự trữ ${fmt1(a.reserves)} → ${fmt1(b.reserves)} tỷ USD), bơm ${fmt0(Math.max(0, fxNet))} tỷ VND vào tiền gửi nhà xuất khẩu và tiền tại NHNN của ngân hàng; VND ${dUsd <= 0 ? 'lên giá' : 'chỉ mất giá'} ${f1(Math.abs(dUsd))}.`); }
+  else if (Math.abs(dUsd) >= 1) P.push(`Tỷ giá ${dUsd > 0 ? 'tăng' : 'giảm'} ${f1(Math.abs(dUsd))} mà NHNN hầu như không can thiệp (bán ${fmt1(sold)}, mua ${fmt1(bought)} tỷ USD)${outShk.length ? `, bối cảnh ${low(outShk)}` : ''}; ngân hàng tự cân đối ngoại tệ, tiền VND trong hệ thống không đổi vì tỷ giá.`);
+  // 2. Thanh khoản VND và liên ngân hàng
+  const liqTxt = `dư tiền tại NHNN so với nhu cầu ${pp(x0, 1).replace('%', '‰')} → ${pp(x1, 1).replace('%', '‰')} tiền gửi`;
+  if (dIb > 0.3) P.push(`${flow < 0 ? 'Từ đó' : 'Về thanh khoản VND,'} hệ thống thiếu VND (${liqTxt}): ngân hàng bị rút tiền phải vay ngân hàng thừa (bình quân ${fmt0(avg('ibLent'))} tỷ/tháng vay nhau) và vay OMO ${fmt0(avg('omoTaken'))} tỷ/tháng, lãi liên ngân hàng căng ${f2(a.ibON)} → ${f2(b.ibON)}${aboveOmo ? `, vượt lãi OMO ${aboveOmo}/${n} tháng` : ''}${dLoans > dDeps + 1 ? (dDeps < 0 ? `; tiền gửi giảm (${sg(dDeps)}) trong khi dư nợ ${sg(dLoans)}, tiền tại NHNN mỏng thêm` : `; cho vay (${sg(dLoans)}) nhanh hơn tiền gửi (${sg(dDeps)}) làm tiền tại NHNN mỏng thêm`) : ''}.`);
+  else if (dIb < -0.3) P.push(`${flow > 0 ? 'Nhờ vậy' : 'Về thanh khoản VND,'} hệ thống thừa VND (${liqTxt}): ngân hàng ít phải vay nhau (${fmt0(avg('ibLent'))} tỷ/tháng), OMO chỉ còn ${fmt0(avg('omoTaken'))} tỷ/tháng, lãi liên ngân hàng hạ ${f2(a.ibON)} → ${f2(b.ibON)}${dDeps > dLoans + 1 ? `; tiền gửi (${sg(dDeps)}) tăng nhanh hơn cho vay (${sg(dLoans)})` : ''}.`);
+  else P.push(`Thanh khoản VND cân bằng (${liqTxt}), lãi liên ngân hàng ${f2(a.ibON)} → ${f2(b.ibON)} trong hành lang; vay nhau ${fmt0(avg('ibLent'))} tỷ/tháng, OMO ${fmt0(avg('omoTaken'))} tỷ/tháng.`);
+  // 3. NHNN
+  const sb = [];
+  if (dBills > a.deps * 0.003) sb.push(`hút ròng ${fmt0(dBills)} tỷ qua tín phiếu (lưu hành ${fmt0(a.bills || 0)} → ${fmt0(b.bills || 0)} tỷ) ${sold >= 1 || dUsd > 1.5 ? 'để giữ tỷ giá, VND khan thêm nên lãi tăng' : b.cpi > 4 ? 'để kiềm chế lạm phát' : 'để hút bớt tiền thừa, giữ sàn lãi liên ngân hàng'}`); else if (dBills < -a.deps * 0.003) sb.push(`để ${fmt0(-dBills)} tỷ tín phiếu đáo hạn trả tiền lại hệ thống`);
+  if (hikes) sb.push(`tăng lãi điều hành ${hikes} lần (${f2(a.refi)} → ${f2(b.refi)}) nâng cả hành lang OMO và cho vay qua đêm`); if (cuts) sb.push(`giảm lãi điều hành ${cuts} lần (${f2(a.refi)} → ${f2(b.refi)})`);
+  if (suaAvg > 0.2) sb.push(`kêu gọi giảm lãi và bơm OMO định hướng (mức ${Math.round(suaAvg * 100)}%)`);
+  if (dLolr > a.deps * 0.002) sb.push(`tái cấp vốn và cho vay đặc biệt thêm ${fmt0(dLolr)} tỷ (tiền cơ sở mới, góp vào áp lực giá)`);
+  if (c.sbv.ease) sb.push(`nới quy định an toàn ${c.sbv.ease} lần để hạ cuộc đua lãi suất đang kìm tăng trưởng`); if (c.sbv.room) sb.push(`nới room ${c.sbv.room} lần`);
+  if (sb.length) P.push(`NHNN ${sb.join('; ')}.`);
+  // 4. Tỷ lệ an toàn → đua huy động
+  const tight = mltAt >= 2 || ldrAt >= 2 || needy >= 0.4;
+  if (tight && dG > 0.15) P.push(`Đồng thời ${mltAt ? `${mltAt}/${nB} ngân hàng sát trần vốn ngắn hạn cho vay trung dài hạn (${a.mltMax ?? ''}%)` : ''}${mltAt && ldrAt ? ', ' : ''}${ldrAt ? `${ldrAt}/${nB} sát trần LDR (${a.ldrMax ?? ''}%)` : ''}${!mltAt && !ldrAt ? `${Math.round(needy * 100)}% ngân hàng thiếu nguồn` : ''}${fundGap > 1 ? `, tín dụng chạy nhanh hơn tiền gửi ${f1(fundGap)}/năm` : ''}: muốn cho vay tiếp phải có thêm vốn dài hạn nên đua huy động kỳ hạn dài, lãi 12 tháng ${f2(a.gt12 ?? a.depSys)} → ${f2(b.gt12 ?? b.depSys)}, bình quân huy động ${f2(a.depSys)} → ${f2(b.depSys)}.`);
+  else if (dDep > 0.15) P.push(`Lãi huy động đi theo liên ngân hàng với độ trễ 1–2 tháng: 12 tháng ${f2(a.gt12 ?? a.depSys)} → ${f2(b.gt12 ?? b.depSys)}, bình quân ${f2(a.depSys)} → ${f2(b.depSys)}${b.cpi > a.cpi + 0.5 ? `, cộng kỳ vọng lạm phát ${f1(a.cpi)} → ${f1(b.cpi)}` : ''}.`);
+  else if (dDep < -0.15) P.push(`${needy >= 0.4 ? `Dù ${Math.round(needy * 100)}% ngân hàng còn sát trần${eased ? ' (trần đã được nới)' : ''}, mặt bằng liên ngân hàng và định hướng của NHNN vẫn kéo lãi huy động xuống` : `Không thiếu nguồn (${Math.round(needy * 100)}% ngân hàng sát trần), ngân hàng hạ lãi huy động theo liên ngân hàng và định hướng của NHNN`}: 12 tháng ${f2(a.gt12 ?? a.depSys)} → ${f2(b.gt12 ?? b.depSys)}, bình quân ${f2(a.depSys)} → ${f2(b.depSys)}.`);
+  else P.push(`Lãi huy động gần như không đổi (${f2(a.depSys)} → ${f2(b.depSys)}): ${tight ? 'có ngân hàng sát trần nhưng mặt bằng liên ngân hàng không đẩy thêm' : 'không có cuộc đua nguồn vốn'}.`);
+  // 5. Giải ngân và lãi cho vay
+  const keepLend = dLoans > 0.5 || b.cg > 2;
+  if (dLend > 0.15) P.push(`${keepLend ? `Trong khi đó giải ngân vẫn được duy trì để giữ tăng trưởng (dư nợ +${f1(dLoans)} trong chương, tín dụng YoY ${f1(b.cg)}, GDP ${f1(a.gdp)} → ${f1(b.gdp)})` : `Tín dụng chững lại (dư nợ ${dLoans >= 0 ? '+' : ''}${f1(dLoans)}, YoY ${f1(b.cg)})`}, ${dCof > 0.05 ? `chi phí vốn ${f2(a.cof)} → ${f2(b.cof)} (chỉ phần tiền gửi đáo hạn mới tính lại) được chuyển dần vào lãi cho vay ${f2(a.lendSys)} → ${f2(b.lendSys)} để bù đắp` : `lãi cho vay vẫn tăng ${f2(a.lendSys)} → ${f2(b.lendSys)} dù chi phí vốn ${f2(a.cof)} → ${f2(b.cof)}: cầu vốn mạnh, ngân hàng lấy lại biên`}${b.npl > 3 ? `, cộng phụ trội rủi ro khi nợ xấu ${f1(b.npl)}` : ''}.`);
+  else if (dLend < -0.15) P.push(`${dCof < -0.05 ? `Chi phí vốn giảm ${f2(a.cof)} → ${f2(b.cof)} nên lãi cho vay hạ ${f2(a.lendSys)} → ${f2(b.lendSys)}` : `Lãi cho vay hạ ${f2(a.lendSys)} → ${f2(b.lendSys)} dù chi phí vốn ${f2(a.cof)} → ${f2(b.cof)}: ngân hàng nhường biên để giữ khách và theo định hướng`}${suaAvg > 0.2 ? ' (NHNN đang kêu gọi giảm lãi)' : ''}; dư nợ ${dLoans >= 0 ? '+' : ''}${f1(dLoans)} trong chương, tín dụng YoY ${f1(b.cg)}, GDP ${f1(a.gdp)} → ${f1(b.gdp)}.`);
+  else P.push(`Lãi cho vay giữ ${f2(a.lendSys)} → ${f2(b.lendSys)} (chi phí vốn ${f2(a.cof)} → ${f2(b.cof)}); dư nợ ${dLoans >= 0 ? '+' : ''}${f1(dLoans)}, tín dụng YoY ${f1(b.cg)}, GDP ${f1(a.gdp)} → ${f1(b.gdp)}.`);
+  // 6. Giá và M2
+  if (Math.abs(b.cpi - a.cpi) >= 0.5 || Math.abs(b.m2 - a.m2) >= 3) P.push(`Kết quả tiền tệ: M2 ${f1(a.m2)} → ${f1(b.m2)}, CPI ${f1(a.cpi)} → ${f1(b.cpi)}${b.cpi > a.cpi + 0.5 ? (dLolr > 0 || bought > 1 ? ' (tiền cơ sở mới từ mua USD và hỗ trợ ngân hàng chảy vào giá có trễ)' : dUsd > 2 ? ' (tỷ giá đẩy giá nhập khẩu)' : '') : ''}.`);
+  return P.join(' ');
+}
 function chronicleData() { // biên niên cả ván: một bản tường thuật xuyên suốt theo đường đi của các đồ thị, chia chương theo lúc mặt bằng lãi suất đổi chiều (không chia theo năm)
   const H = W.hist.filter(h => !h.hist); if (H.length < 2) return null; const acts = W.actions || [], narr = W.narr || []; const B = W.player;
   const first = H[0], last = H[H.length - 1]; const series = chronSeries(H); const byKey = {}; series.forEach(s => byKey[s.key] = s);
@@ -2686,7 +2731,7 @@ function chronicleData() { // biên niên cả ván: một bản tường thuậ
     const keyPick = key.length <= 4 ? key : [key[0], key[Math.floor(key.length / 3)], key[Math.floor(key.length * 2 / 3)], key[key.length - 1]];
     const bankRows = B ? B.hist.filter(h => h.m >= m0 && h.m <= m1) : [];
     const title = g.kind === 'flat' ? `${spine.name} đi ngang quanh ${spine.f(g.avg)}` : `${spine.name} ${g.kind === 'up' ? 'tăng' : 'giảm'} ${spine.f(g.v0)} → ${spine.f(g.v1)}`;
-    return { ci, m0, m1, months: rows.length, label: `${W.dateStr(m0)} – ${W.dateStr(m1)}`, title, kind: g.kind, mv, phaseTxt, A, sbv, key, keyPick, bankRows, lane: who => A.filter(a => a.who === who) };
+    return { ci, g, m0, m1, months: rows.length, label: `${W.dateStr(m0)} – ${W.dateStr(m1)}`, title, kind: g.kind, mv, phaseTxt, A, sbv, key, keyPick, bankRows, lane: who => A.filter(a => a.who === who) };
   });
   return { first, last, H, series, spine, chapters, acts, narr, B };
 }
@@ -2713,6 +2758,7 @@ function chroniclePane() {
   const chs = chapters.map(c => { const t = chronChapterText(c, B); return `<div class="panel" style="margin-top:12px"><h2>Chương ${c.ci + 1} · ${c.label} (${c.months} tháng): ${c.title}</h2>
     <p><b>Thanh khoản.</b> ${t.liq}</p><p><b>Mặt bằng lãi suất.</b> ${t.rates}</p><p><b>Tỷ giá & dự trữ.</b> ${t.fx}</p><p><b>Kinh tế & tín dụng.</b> ${t.eco}${t.sbvTxt ? ' ' + t.sbvTxt : ''}</p>
     ${t.bank ? `<p><b>${B.code}.</b> ${t.bank}</p>` : ''}
+    <p><b>Chuỗi nhân quả.</b> ${chronCause(c, H, c.g)}</p>
     ${c.keyPick.length ? `<p><b>Vì sao lãi suất đi như vậy (diễn giải tuần).</b></p><ul class="replist">${c.keyPick.map(n => `<li><span class="muted">${W.dateStr(n.m)} tuần ${n.w}:</span> ${n.t.length > 300 ? n.t.slice(0, 298) + '…' : n.t}</li>`).join('')}</ul>` : ''}
     <p><b>Hành động các bên (${c.A.length}).</b></p><ul class="replist">${LANES.map(l => { const L = c.lane(l[0]); return L.length ? `<li>${pill(l[0])} ${L.length}: ${L.slice(0, 10).map(a => `${actWhen(a)}: ${a.text.length > 110 ? a.text.slice(0, 108) + '…' : a.text}`).join(' · ')}${L.length > 10 ? ` · … (+${L.length - 10})` : ''}</li>` : ''; }).join('')}</ul>
   </div>`; }).join('');
@@ -2727,7 +2773,7 @@ function chronicleText() { // bản văn bản đầy đủ để sao chép
   L.push('', '=== Đường đi của các đồ thị cả ván ==='); for (const s of series) L.push(`- ${chronPath(s, H)}`);
   L.push('', `(Chương chia theo lúc ${spine.name.toLowerCase()} đổi chiều)`);
   for (const c of chapters) { const t = chronChapterText(c, B); L.push('', `=== Chương ${c.ci + 1} · ${c.label} (${c.months} tháng): ${c.title} ===`);
-    L.push(`Thanh khoản: ${t.liq}`, `Mặt bằng lãi suất: ${t.rates}`, `Tỷ giá & dự trữ: ${t.fx}`, `Kinh tế & tín dụng: ${t.eco}${t.sbvTxt ? ' ' + t.sbvTxt : ''}`); if (t.bank) L.push(t.bank);
+    L.push(`Thanh khoản: ${t.liq}`, `Mặt bằng lãi suất: ${t.rates}`, `Tỷ giá & dự trữ: ${t.fx}`, `Kinh tế & tín dụng: ${t.eco}${t.sbvTxt ? ' ' + t.sbvTxt : ''}`); if (t.bank) L.push(t.bank); L.push(`Chuỗi nhân quả: ${chronCause(c, H, c.g)}`);
     L.push('Hành động:'); for (const a of c.A) L.push(`  ${actWhen(a)} [${a.who}] ${a.text}${a.why ? ' — vì: ' + a.why : ''}`);
     const nn = narr.filter(n => n.m >= c.m0 && n.m <= c.m1); if (nn.length) { L.push('Diễn giải tuần:'); for (const n of nn) L.push(`  ${W.dateStr(n.m)} tuần ${n.w}: ${n.t}`); } }
   return L.join('\n');
