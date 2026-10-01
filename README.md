@@ -115,6 +115,11 @@ Chưa đạt: kịch bản 4 cần phản ứng mạnh hơn với chênh lệch 
 - Phương trình IS có thêm `− aP × max(0, CPI − cpiHurt)` với `cpiHurt` 4,5 và `aP` 0,5: lạm phát trên 4,5% bào mòn thu nhập thực, tiêu dùng yếu, GDP mất 0,5 điểm mỗi điểm CPI vượt ngưỡng (tham số). Vì lãi điều hành bị giữ thấp, đây là ràng buộc thật của mục tiêu 8%: để tỷ giá trượt → CPI lên → GDP mất.
 - Sốc chính trị, thương mại đánh vào tỷ giá mạnh hơn nhiều: vốn rút mỗi tháng (`cap`) Chiến sự Trung Đông 2,5 tỷ USD, Thuế quan Mỹ 1,6, Chiến tranh thương mại 1,8, Suy thoái toàn cầu 2,0, USD rút ròng 3,0; FDI giải ngân cắt 50–80%. Vị thế ngoại tệ của ngân hàng (~3 tỷ) hấp thụ hết trong tháng đầu, sau đó NHNN phải bán hoặc tỷ giá trượt.
 
+## Nhật ký engine (tab *Nhật ký engine*, nút ở bảng kết thúc ván)
+
+- Engine ghi lại từng bước mã nguồn đã chạy mỗi tuần (`World.trace`): `fiscalStep` (thu, chi, đầu tư công, TPCP, Kho bạc tại NHNN/NHTM) → `macroStep` (tiềm năng nội sinh, gap, gTarget và các thành phần, CPI và các thành phần, aE, phần tỷ giá, thất nghiệp) → `updateMarket` (neo huy động và thành phần, tỷ lệ ngân hàng thiếu nguồn, mặt bằng cơ sở, cầu tín dụng) → `aiPolicy` từng ngân hàng đầu tháng (thiếu nguồn vì sao, phụ trội lãi, niêm yết, mục tiêu tăng trưởng, cổ tức) → giải ngân từng ngân hàng (cầu, mục tiêu, giải ngân, các trần và trần nào ràng buộc, dự phòng) → `clearing` (tiền gửi tạo và hủy) → `fxStep` (cầu USD ròng tách thành phần, hấp thụ, bán, mua, chưa đáp ứng, tỷ giá) → `applyBills` → `settle` (thừa thiếu tự có, vay nhau, OMO chào và lấy, qua đêm, tái cấp vốn, công thức LNH) → sổ tiền cơ sở từng tuần; `sbvAuto` (lãi điều hành giữ hay hạ vì sao, omoFill vì sao, tín phiếu, fxFill, kêu gọi, nới quy định); mọi hành động và sự kiện có lý do (`act`), mọi cú sốc (`addShock`); khóa sổ từng ngân hàng cuối tháng.
+- Giao diện: lọc theo loại, tháng, từ khóa; hiện 800 dòng mới nhất khớp bộ lọc; nút sao chép phần đang lọc và tải toàn bộ `.txt`. Giới hạn 60.000 dòng (cắt bớt phần cũ nhất).
+
 ## Sửa theo bản rà soát vĩ mô (New Keynesian)
 
 1. **Cầu tín dụng có trễ với lãi vay**: dùng lãi vay bình quân ba tháng gần nhất thay vì lãi hiện hành (`creditDemand`); hệ số GDP nâng 0,08 → 0,12 vì chu kỳ tín dụng Việt Nam biến động mạnh hơn GDP.
