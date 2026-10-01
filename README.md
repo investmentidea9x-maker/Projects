@@ -283,6 +283,13 @@ Khối tài khóa chạy mỗi tháng (tham số xấp xỉ 2025, tỷ VND/năm:
 - **Mục tiêu GDP 8%** của Chính phủ (tiềm năng mô hình 7,5%): KPI GDP đổi màu theo mục tiêu 8%; điểm Thống đốc cộng 3 khi đạt, 1 khi ≥ 6,5, trừ khi dưới 5,5. Chế độ NHNN có quyết định "GDP dưới mục tiêu 8%" (giảm lãi theo Taylor, nới room, bơm ròng, hoặc để tài khóa gánh). Ở chế độ ngân hàng, NHNN tự động giảm lãi 0,25 điểm mỗi 6 tháng và nới room thêm 1 điểm khi GDP dưới 8% mà CPI dưới 4,5% và tỷ giá ổn. Đẩy tăng trưởng trên tiềm năng làm lạm phát và BĐS nóng: đó là đánh đổi.
 - Hiển thị: bảng "Thị trường/Vĩ mô" có tồn quỹ KBNN, giải ngân tháng/lũy kế/kế hoạch, phát hành TPCP, thâm hụt, mục tiêu GDP; tab Hệ thống có hai biểu đồ tài khóa; bảng cân đối ngân hàng quốc doanh có dòng tiền gửi KBNN; báo cáo tháng có dòng tài khóa.
 
+## Dải mờ thấp nhất–cao nhất trên biểu đồ
+
+Mỗi tháng (và mỗi tuần ở chế độ tuần) engine ghi khoảng [thấp nhất, cao nhất] giữa các ngân hàng đang hoạt động (`bankRanges`): lãi cho vay bình quân, lãi huy động bình quân, lãi 12 tháng, chi phí vốn, LDR, CAR, nợ xấu, vốn ngắn hạn cho vay TDH, dự trữ thanh khoản. Biểu đồ vẽ khoảng này thành **dải mờ** cùng màu sau đường chính (`lineChart`, `plotSeries`, trường `band`), chú thích "dải mờ: thấp nhất–cao nhất giữa các ngân hàng"; di chuột hiện cả hai biên trong ngoặc.
+
+- Thống đốc: bảng điều khiển *Lãi suất hệ thống* (huy động, cho vay), *Nợ xấu hệ thống*, *An toàn vốn & kỳ hạn* (CAR hệ thống, LDR hệ thống, vốn NH cho vay TDH), tab Hệ thống *Sức khỏe hệ thống*. CAR hệ thống = tổng vốn tự có / tổng RWA; LDR hệ thống theo cùng mẫu số TT22 của từng ngân hàng (`sysLdr`), không còn là dư nợ/tiền gửi thô.
+- Ngân hàng: dải là khoảng của toàn hệ thống đặt sau đường của ngân hàng mình (CAR, nợ xấu, LDR, vốn NH cho vay TDH, dự trữ thanh khoản, lãi cho vay bình quân, chi phí vốn, lãi suất hệ thống) để thấy mình đang ở đâu so với các ngân hàng khác; tab Tuân thủ cũng có dải.
+
 ## Vì sao engine từng cho vay ngắn, và sửa (tách kỳ hạn thật)
 
 Trước bản này tỷ trọng dư nợ trung dài hạn toàn hệ thống trượt từ 48% xuống 41–43% sau 5 năm, tỷ lệ vốn ngắn hạn cho vay TDH nhóm quốc doanh từ 24 xuống 16–20, vì bốn lẽ: tài sản không có chênh lệch giá theo kỳ hạn trong khi nguồn thì có; trần MLT chỉ là phanh, không có ga; CAR mục tiêu bó nhóm quốc doanh; và không có cầu tín dụng dự án. Sửa năm chỗ:

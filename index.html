@@ -1048,6 +1048,14 @@ class World {
       creditDemand: clamp(1 + 0.12 * (M.gdp - 6.5) - 0.12 * (lendL - 9.5), 0.5, 1.6) * this.shockMul('demand') /* cầu vay theo lãi vay bình quân 3 tháng gần nhất (hợp đồng đã ký chạy tiếp), nhạy GDP hơn (chu kỳ tín dụng VN biến động mạnh hơn GDP) */, priorityCap: REG.priorityCap };
     this.trace('market', `updateMarket: neo huy động ${pp(anchor, 2)} (TCV ${pp(S.refi)}, LNH bình quân 8 tuần ${pp(ibA, 2)}, kêu gọi ${Math.round(sua * 100)}%, chênh tín dụng−M2 ${pp(fundGap, 1)}), ngân hàng thiếu nguồn ${Math.round(needy * 100)}%, mặt bằng cơ sở <6T ${pp(bLt6, 2)} 6–12T ${pp(bM6, 2)} ≥12T ${pp(bGt12, 2)}, cho vay mới ${pp(lend, 2)}, cầu tín dụng ×${this.market.creditDemand.toFixed(2)} (lãi vay 3T ${pp(lendL, 2)}); theo kỳ hạn: cho vay ngắn hạn ${pp(lendShort, 2)} (chi phí vốn ${pp(cofL, 2)} + 1,5 + chung) · TDH ${pp(lendMLT, 2)} (tiền gửi ≥12T ${pp(gtA, 2)} + 2,5 + rủi ro + chung), cầu ngắn ×${this.market.creditDemandS.toFixed(2)} dài ×${this.market.creditDemandL.toFixed(2)}, cầu dự án theo đầu tư công ${fmt0(this.market.pubInvL)}/tháng, dư nợ TDH hệ thống ${pp(wL * 100, 1)}%`);
   }
+  bankRanges(alive) { // khoảng [thấp nhất, cao nhất] giữa các ngân hàng đang hoạt động, vẽ thành dải mờ sau đường hệ thống
+    const a = alive || this.banks.filter(b => !b.dead); if (!a.length) return null; const mkt = this.market; const rg = v => [Math.min(...v), Math.max(...v)];
+    const lend = a.map(b => SECTORS.reduce((x, sec) => x + b.sectorTotal(sec.id) * b.sectorRate(sec, mkt), 0) / Math.max(1, b.grossLoans()));
+    const dep = a.map(b => (b.dep.casa * b.pol.rCasa + b.dep.lt6 * b.pol.rLt6 + b.dep.m6_12 * b.pol.rM6_12 + b.dep.gt12 * b.pol.rGt12) / Math.max(1, b.deposits()));
+    return { lend: rg(lend), dep: rg(dep), gt12: rg(a.map(b => b.pol.rGt12)), ldr: rg(a.map(b => b.ldr())), car: rg(a.map(b => b.car())), npl: rg(a.map(b => b.nplRatio() * 100)), mlt: rg(a.map(b => b.mltRatio())), liq: rg(a.map(b => b.liqReserve())), cof: rg(a.map(b => b.costOfFunds())) };
+  }
+  sysLdr(alive) { const a = alive || this.banks.filter(b => !b.dead); return sum(a.map(b => b.grossLoans())) / Math.max(1, sum(a.map(b => b.grossLoans() / Math.max(1, b.ldr())))); } // LDR hệ thống theo cùng mẫu số TT22 của từng ngân hàng (tiền gửi + GTCG + vốn vay dài + phần KBNN)
+  sysCar(alive) { const a = alive || this.banks.filter(b => !b.dead); return sum(a.map(b => b.tier1() + b.tier2())) / Math.max(1, sum(a.map(b => b.rwa()))) * 100; }
   sysMltShare(alive) { const a = alive || this.banks.filter(b => !b.dead); return sum(a.map(b => b.mltLoans())) / Math.max(1, sum(a.map(b => b.grossLoans()))); }
   sysCostOfFunds(gt12, ibON) { // chi phí vốn bình quân toàn hệ thống, an toàn khi chưa có lãi suất đã gán
     const alive = this.banks.filter(b => !b.dead); let cost = 0, fund = 0;
@@ -1527,7 +1535,7 @@ class World {
   }
   pushWeekRows() { // điểm dữ liệu giữa tháng cho bảng điều khiển (tuần 1–3; tuần 4 là dòng khóa sổ tháng)
     const w = this.week + 1, alive = this.banks.filter(b => !b.dead);
-    this.wk.push({ m: this.month, w, minCar: alive.length ? Math.min(...alive.map(b => b.car())) : 0, maxNpl: alive.length ? Math.max(...alive.map(b => b.nplRatio() * 100)) : 0, treasury: this.fiscal.treasury, gbY: this.market.gbondYield, cpi: this.macro.cpi, cpiFx: this.macro.cpiFx || 0, fxYoY: this.macro.fxYoY ?? this.macro.fx, re: this.macro.re, gdp: this.macro.gdp, u: this.macro.u, gap: this.macro.gap, real: this.macro.real, taylor: this.macro.taylor, fx: this.macro.fx, usd: this.macro.usd, re: this.macro.re, ibON: this.market.ibON, refi: this.sbv.refi, depSys: this.market.depSys, lendSys: this.market.lendSys, cof: this.market.cof, fed: this.macro.fedRate, loans: this.sysLoans(), deps: this.sysDeposits(), npl: this.sysNpl() * 100, cg: this.sysCreditGrowthAnn, reserves: this.macro.reserves, m2: this.macro.m2 });
+    this.wk.push({ m: this.month, w, rng: this.bankRanges(alive), sysCar: this.sysCar(alive), sysLdr: this.sysLdr(alive), minCar: alive.length ? Math.min(...alive.map(b => b.car())) : 0, maxNpl: alive.length ? Math.max(...alive.map(b => b.nplRatio() * 100)) : 0, treasury: this.fiscal.treasury, gbY: this.market.gbondYield, cpi: this.macro.cpi, cpiFx: this.macro.cpiFx || 0, fxYoY: this.macro.fxYoY ?? this.macro.fx, re: this.macro.re, gdp: this.macro.gdp, u: this.macro.u, gap: this.macro.gap, real: this.macro.real, taylor: this.macro.taylor, fx: this.macro.fx, usd: this.macro.usd, re: this.macro.re, ibON: this.market.ibON, refi: this.sbv.refi, depSys: this.market.depSys, lendSys: this.market.lendSys, cof: this.market.cof, fed: this.macro.fedRate, loans: this.sysLoans(), deps: this.sysDeposits(), npl: this.sysNpl() * 100, cg: this.sysCreditGrowthAnn, reserves: this.macro.reserves, m2: this.macro.m2 });
     for (const b of alive) { const r = b.snapshot(this, b.pnlWk || b.emptyPnl(), 4); r.w = w; (b.wk = b.wk || []).push(r); }
   }
   endMonth() { // khóa sổ tháng: các ngân hàng, cú sốc, sự kiện, cuối năm, lịch sử
@@ -1558,7 +1566,7 @@ class World {
     const alive2 = this.banks.filter(b => !b.dead);
     this.updatePhase();
     this.inStep = false;
-    this.hist.push({ m: this.month, treasury: this.fiscal.treasury, pubInv: this.fiscal.lastI, bondIss: this.fiscal.lastB, deficit: this.fiscal.deficit, gbY: this.market.gbondYield, minCar: alive2.length ? Math.min(...alive2.map(b => b.car())) : 0, maxNpl: alive2.length ? Math.max(...alive2.map(b => b.nplRatio() * 100)) : 0, cpi: this.macro.cpi, cpiFx: this.macro.cpiFx || 0, fxYoY: this.macro.fxYoY ?? this.macro.fx, re: this.macro.re, gdp: this.macro.gdp, u: this.macro.u, gap: this.macro.gap, real: this.macro.real, taylor: this.macro.taylor, fx: this.macro.fx, usd: this.macro.usd, re: this.macro.re, ibON: this.market.ibON, refi: this.sbv.refi, depSys: this.market.depSys, lendSys: this.market.lendSys, cof: this.market.cof, fed: this.macro.fedRate, phase: this.cyclePhase().key, loans: this.sysLoans(), deps: this.sysDeposits(), npl: this.sysNpl() * 100, cg: this.sysCreditGrowthAnn, reserves: this.macro.reserves, m2: this.macro.m2, m2s: this.m2Stock(), bills: this.sbv.billsOut || 0, lendNew: this.market.lend, lendS: this.market.lendShort, lendL: this.market.lendMLT, mltSh: (this.market.mltShSys ?? 0) * 100, fxNet: this.sbv.fxNetVnd || 0, mb: this.baseMoney(), liqX: this.liq ? this.liq.x : 0, omoTaken: this.liq ? this.liq.omoTaken : 0, ibLent: this.liq ? this.liq.lent : 0, bankUsd: this.sbv.bankUsd || 0, unmet: this.sbv.unmetM || 0, omo: this.sbv.omo, ledgerErr: this.ledgerErr || 0, shocks: this.shocks.map(x => x.name), soldM: this.sbv.soldM || 0, boughtM: this.sbv.bought || 0, needy: this._needy || 0, fundGap: this._fundGap || 0, gt12: this.market.gt12, nBanks: alive2.length, mltAt: alive2.filter(b => b.mltRatio() > this.sbv.mltMax - 3).length, ldrAt: alive2.filter(b => b.ldr() > this.sbv.ldrMax - 2).length, mltMax: this.sbv.mltMax, ldrMax: this.sbv.ldrMax, worldCycle: this.worldCycle || 0, unmetM: this.sbv.unmetM || 0, omoFill: this.sbv.omoFill ?? 1, takeM: this.sbv.takeM || 0, absM: this.sbv.absM || 0, capOut: this.shock('cap'), fdiCut: Math.min(1, this.shock('fdiCut')), sua: this.sbv.suasion || 0, lolrSys: (this.sysLolr || 0) + (this.sysSp || 0), eased: !!this.sbv.eased, ledg: this.ledgM || {} }); this.ledgM = {}; // sổ tiền cơ sở cộng dồn theo tháng: fx, omo, bills, lolr, treasury, currency, exit
+    this.hist.push({ m: this.month, treasury: this.fiscal.treasury, pubInv: this.fiscal.lastI, bondIss: this.fiscal.lastB, deficit: this.fiscal.deficit, gbY: this.market.gbondYield, minCar: alive2.length ? Math.min(...alive2.map(b => b.car())) : 0, maxNpl: alive2.length ? Math.max(...alive2.map(b => b.nplRatio() * 100)) : 0, cpi: this.macro.cpi, cpiFx: this.macro.cpiFx || 0, fxYoY: this.macro.fxYoY ?? this.macro.fx, re: this.macro.re, gdp: this.macro.gdp, u: this.macro.u, gap: this.macro.gap, real: this.macro.real, taylor: this.macro.taylor, fx: this.macro.fx, usd: this.macro.usd, re: this.macro.re, ibON: this.market.ibON, refi: this.sbv.refi, depSys: this.market.depSys, lendSys: this.market.lendSys, cof: this.market.cof, fed: this.macro.fedRate, phase: this.cyclePhase().key, loans: this.sysLoans(), deps: this.sysDeposits(), npl: this.sysNpl() * 100, cg: this.sysCreditGrowthAnn, reserves: this.macro.reserves, m2: this.macro.m2, m2s: this.m2Stock(), bills: this.sbv.billsOut || 0, lendNew: this.market.lend, lendS: this.market.lendShort, lendL: this.market.lendMLT, mltSh: (this.market.mltShSys ?? 0) * 100, fxNet: this.sbv.fxNetVnd || 0, mb: this.baseMoney(), liqX: this.liq ? this.liq.x : 0, omoTaken: this.liq ? this.liq.omoTaken : 0, ibLent: this.liq ? this.liq.lent : 0, bankUsd: this.sbv.bankUsd || 0, unmet: this.sbv.unmetM || 0, omo: this.sbv.omo, ledgerErr: this.ledgerErr || 0, shocks: this.shocks.map(x => x.name), soldM: this.sbv.soldM || 0, boughtM: this.sbv.bought || 0, needy: this._needy || 0, fundGap: this._fundGap || 0, gt12: this.market.gt12, nBanks: alive2.length, mltAt: alive2.filter(b => b.mltRatio() > this.sbv.mltMax - 3).length, ldrAt: alive2.filter(b => b.ldr() > this.sbv.ldrMax - 2).length, mltMax: this.sbv.mltMax, ldrMax: this.sbv.ldrMax, worldCycle: this.worldCycle || 0, unmetM: this.sbv.unmetM || 0, omoFill: this.sbv.omoFill ?? 1, takeM: this.sbv.takeM || 0, absM: this.sbv.absM || 0, capOut: this.shock('cap'), fdiCut: Math.min(1, this.shock('fdiCut')), sua: this.sbv.suasion || 0, lolrSys: (this.sysLolr || 0) + (this.sysSp || 0), eased: !!this.sbv.eased, rng: this.bankRanges(alive2), sysCar: this.sysCar(alive2), sysLdr: this.sysLdr(alive2), ledg: this.ledgM || {} }); this.ledgM = {}; // sổ tiền cơ sở cộng dồn theo tháng: fx, omo, bills, lolr, treasury, currency, exit
     if (this.hist.length > 300) this.hist.shift(); this.wk = [];
   }
   sbvScore() {
@@ -2657,11 +2665,11 @@ function complyPane(B) {
     </div>
   </div>
   <div class="grid g3" style="margin-top:12px">
-    ${chartBox('k1', 'CAR (%)', [{ name: 'CAR', color: '--s1' }], `nét đứt: tối thiểu ${S.carMin}%`)}
-    ${chartBox('k2', 'LDR (%)', [{ name: 'LDR', color: '--s3' }], `trần ${S.ldrMax}%`)}
-    ${chartBox('k3', 'Vốn ngắn hạn cho vay TDH (%)', [{ name: 'Tỷ lệ', color: '--s4' }, { name: 'Dư nợ TDH / tổng dư nợ', color: '--s2' }], `trần ${S.mltMax}%`)}
-    ${chartBox('k4', 'Dự trữ thanh khoản (%)', [{ name: 'Tỷ lệ', color: '--s6' }], 'tối thiểu 10%')}
-    ${chartBox('k5', 'Nợ xấu (%)', [{ name: 'Nội bảng', color: '--s2' }, { name: 'Gộp VAMC', color: '--s5' }], 'ngưỡng 3%')}
+    ${chartBox('k1', 'CAR (%)', [{ name: 'CAR', color: '--s1', band: true }], `nét đứt: tối thiểu ${S.carMin}%`)}
+    ${chartBox('k2', 'LDR (%)', [{ name: 'LDR', color: '--s3', band: true }], `trần ${S.ldrMax}%`)}
+    ${chartBox('k3', 'Vốn ngắn hạn cho vay TDH (%)', [{ name: 'Tỷ lệ', color: '--s4', band: true }, { name: 'Dư nợ TDH / tổng dư nợ', color: '--s2' }], `trần ${S.mltMax}%`)}
+    ${chartBox('k4', 'Dự trữ thanh khoản (%)', [{ name: 'Tỷ lệ', color: '--s6', band: true }], 'tối thiểu 10%')}
+    ${chartBox('k5', 'Nợ xấu (%)', [{ name: 'Nội bảng', color: '--s2', band: true }, { name: 'Gộp VAMC', color: '--s5' }], 'ngưỡng 3%')}
     ${chartBox('k6', 'Tín dụng so với room (%)', [{ name: 'Tăng trưởng YTD', color: '--s1' }, { name: 'Room', color: '--s2' }])}
   </div>`;
 }
@@ -2683,7 +2691,7 @@ function systemPane() {
       <div class="panel"><h2>Dự trữ thanh khoản theo ngân hàng</h2><canvas class="chart" id="s5"></canvas></div>
       <div class="panel"><h2>Tổng tài sản (nghìn tỷ)</h2><canvas class="chart" id="s6"></canvas></div>
       ${chartBox('s7', 'Dư nợ & tiền gửi hệ thống (nghìn tỷ)', [{ name: 'Dư nợ', color: '--s2' }, { name: 'Tiền gửi', color: '--s3' }])}
-      ${chartBox('s8', 'Sức khỏe hệ thống (%)', [{ name: 'LDR hệ thống', color: '--s1' }, { name: 'Nợ xấu hệ thống', color: '--s2' }, { name: 'CAR thấp nhất', color: '--s4' }])}
+      ${chartBox('s8', 'Sức khỏe hệ thống (%)', [{ name: 'LDR hệ thống', color: '--s1', band: true }, { name: 'Nợ xấu hệ thống', color: '--s2', band: true }, { name: 'CAR hệ thống', color: '--s4', band: true }])}
       ${chartBox('s9', 'Tài khóa: tiền gửi KBNN & đầu tư công (nghìn tỷ)', [{ name: 'Tiền gửi KBNN tại NHTM', color: '--s1' }, { name: 'Giải ngân ĐTC tháng', color: '--s3' }])}
       ${chartBox('s10', 'TPCP: phát hành, thâm hụt tháng (nghìn tỷ) & lợi suất (%)', [{ name: 'Phát hành TPCP', color: '--s2' }, { name: 'Thâm hụt', color: '--s4' }, { name: 'Lợi suất ×10', color: '--s1' }])}
     </div>
@@ -2978,28 +2986,34 @@ function reportPane() {
 
 /* ---------- Bảng điều khiển (chuỗi thời gian) ---------- */
 let dashRange = 36;
+function bandFrom(rows, k) { // dải [thấp nhất, cao nhất] giữa các ngân hàng cho từng hàng dữ liệu; hàng của ngân hàng tra sang lịch sử hệ thống cùng tháng (và tuần); trả về null nếu không hàng nào có
+  const key = r => `${r.m}-${r.w || 0}`; const idx = {}; for (const r of (W.hist || [])) if (r.rng) idx[key(r)] = r.rng; for (const r of (W.wk || [])) if (r.rng) idx[key(r)] = r.rng;
+  const lo = [], hi = []; let any = false; for (const r of rows) { const g = r.rng || idx[key(r)]; const v = g && g[k]; lo.push(v ? v[0] : null); hi.push(v ? v[1] : null); if (v) any = true; }
+  return any ? { lo, hi } : null;
+}
 function chartBox(id, title, series, note) {
-  return `<div class="panel"><h2>${title}</h2><canvas class="chart" id="${id}"></canvas><div class="legend">${series.map(s => `<span><i style="background:var(${s.color})"></i>${s.name}</span>`).join('')}${note ? `<span class="muted">${note}</span>` : ''}</div></div>`;
+  const band = series.some(s => s.band) ? '<span class="muted">dải mờ: thấp nhất–cao nhất giữa các ngân hàng</span>' : ''; return `<div class="panel"><h2>${title}</h2><canvas class="chart" id="${id}"></canvas><div class="legend">${series.map(s => `<span><i style="background:var(${s.color})"></i>${s.name}</span>`).join('')}${note ? `<span class="muted">${note}</span>` : ''}${band}</div></div>`;
 }
 function dashSeries(B) {
   const S = W.sbv;
   if (W.mode === 'bank') {
     const h = B.hist.slice(-dashRange).concat(B.wk || []); const m0 = h.length ? h[0].m : 0; const dep = x => x.dep.casa + x.dep.lt6 + x.dep.m6_12 + x.dep.gt12; // thêm các tuần của tháng đang chạy
     const hw = W.hist.slice(-dashRange).concat(W.wk || []); const m0w = hw.length ? hw[0].m : 0;
+    const bandOf = (rows, k) => bandFrom(rows, k); // dải hệ thống (thấp nhất–cao nhất giữa các ngân hàng) đặt sau đường của ngân hàng mình để thấy vị thế
     return { m0, h, ts: rowTimes(h), tsw: rowTimes(hw), charts: [
       { id: 'd1', title: 'Quy mô (tỷ VND)', series: [{ name: 'Tổng tài sản', color: '--s1', data: h.map(x => x.TA) }, { name: 'Tiền gửi', color: '--s3', data: h.map(dep) }, { name: 'Dư nợ', color: '--s2', data: h.map(x => x.loans) }] },
       { id: 'd2', title: 'Lợi nhuận tháng (tỷ VND)', series: [{ name: 'Thu nhập lãi thuần', color: '--s3', data: h.map(x => x.nii ?? 0) }, { name: 'Lợi nhuận sau thuế', color: '--s1', data: h.map(x => x.net) }, { name: 'Dự phòng', color: '--s2', data: h.map(x => x.provExp ?? 0) }] },
       { id: 'd3', title: 'Sinh lời (%)', series: [{ name: 'ROE năm hóa', color: '--s1', data: h.map(x => x.roe) }, { name: 'NIM', color: '--s2', data: h.map(x => x.nim) }, { name: 'Chi phí vốn', color: '--s3', data: h.map(x => x.cof) }], lines: [W.diff.roe - (B.type === 'sob' ? 3 : 0)], note: 'nét đứt: ROE cổ đông kỳ vọng' },
-      { id: 'd4', title: 'CAR (%)', series: [{ name: 'CAR', color: '--s1', data: h.map(x => x.car) }], lines: [S.carMin], note: `tối thiểu ${S.carMin}%` },
-      { id: 'd5', title: 'Nợ xấu (%)', series: [{ name: 'Nợ nhóm 3–5', color: '--s2', data: h.map(x => x.npl) }], lines: [3], note: 'ngưỡng 3%' },
-      { id: 'd6', title: 'LDR (%)', series: [{ name: 'Dư nợ / tiền gửi', color: '--s3', data: h.map(x => x.ldr) }], lines: [S.ldrMax], note: `trần ${S.ldrMax}%` },
-      { id: 'd7', title: 'Vốn ngắn hạn cho vay TDH (%)', series: [{ name: 'Tỷ lệ', color: '--s4', data: h.map(x => x.mlt) }], lines: [S.mltMax], note: `trần ${S.mltMax}%` },
-      { id: 'd8', title: 'Dự trữ thanh khoản (%)', series: [{ name: 'Tỷ lệ', color: '--s6', data: h.map(x => x.liq) }], lines: [10], note: 'tối thiểu 10%' },
+      { id: 'd4', title: 'CAR (%)', series: [{ name: 'CAR', color: '--s1', data: h.map(x => x.car), band: bandOf(h, 'car') }], lines: [S.carMin], note: `tối thiểu ${S.carMin}%` },
+      { id: 'd5', title: 'Nợ xấu (%)', series: [{ name: 'Nợ nhóm 3–5', color: '--s2', data: h.map(x => x.npl), band: bandOf(h, 'npl') }], lines: [3], note: 'ngưỡng 3%' },
+      { id: 'd6', title: 'LDR (%)', series: [{ name: 'Dư nợ / tiền gửi', color: '--s3', data: h.map(x => x.ldr), band: bandOf(h, 'ldr') }], lines: [S.ldrMax], note: `trần ${S.ldrMax}%` },
+      { id: 'd7', title: 'Vốn ngắn hạn cho vay TDH (%)', series: [{ name: 'Tỷ lệ', color: '--s4', data: h.map(x => x.mlt), band: bandOf(h, 'mlt') }], lines: [S.mltMax], note: `trần ${S.mltMax}%` },
+      { id: 'd8', title: 'Dự trữ thanh khoản (%)', series: [{ name: 'Tỷ lệ', color: '--s6', data: h.map(x => x.liq), band: bandOf(h, 'liq') }], lines: [10], note: 'tối thiểu 10%' },
       { id: 'd9', title: 'Tín dụng so với room (%)', series: [{ name: 'Tăng trưởng YTD', color: '--s1', data: h.map(x => x.growth) }, { name: 'Room NHNN', color: '--s2', data: h.map(x => x.room ?? B.room) }] },
-      { id: 'd10', title: 'Lãi suất của ngân hàng (%)', series: [{ name: 'LS cho vay bình quân', color: '--s2', data: h.map(x => x.lendAvg ?? 0) }, { name: 'Chi phí vốn', color: '--s3', data: h.map(x => x.cof) }] },
+      { id: 'd10', title: 'Lãi suất của ngân hàng (%)', series: [{ name: 'LS cho vay bình quân', color: '--s2', data: h.map(x => x.lendAvg ?? 0), band: bandOf(h, 'lend') }, { name: 'Chi phí vốn', color: '--s3', data: h.map(x => x.cof), band: bandOf(h, 'cof') }] },
       { id: 'd11', title: 'Vĩ mô (%) · lịch sử thật từ 2022', m0: m0w, series: [{ name: 'CPI', color: '--s1', data: hw.map(x => x.cpi ?? 0) }, { name: 'GDP', color: '--s3', data: hw.map(x => x.gdp ?? 0) }, { name: 'Tín dụng YoY', color: '--s2', data: hw.map(x => x.cg ?? 0) }] },
       { id: 'd13', title: 'Tỷ giá USD/VND · lịch sử thật', m0: m0w, series: [{ name: 'USD/VND', color: '--s2', data: hw.map(x => x.usd ?? 0) }], zero: false },
-      { id: 'd14', title: 'Lãi suất hệ thống (%) · lịch sử thật', m0: m0w, series: [{ name: 'Huy động hệ thống', color: '--s3', data: hw.map(x => x.depSys ?? 0) }, { name: 'Cho vay hệ thống', color: '--s2', data: hw.map(x => x.lendSys ?? 0) }, { name: 'Liên NH O/N', color: '--s4', data: hw.map(x => x.ibON ?? 0) }, { name: 'Tái cấp vốn', color: '--s1', data: hw.map(x => x.refi ?? 0) }, { name: 'Fed', color: '--s6', data: hw.map(x => x.fed ?? 0) }] },
+      { id: 'd14', title: 'Lãi suất hệ thống (%) · lịch sử thật', m0: m0w, series: [{ name: 'Huy động hệ thống', color: '--s3', data: hw.map(x => x.depSys ?? 0), band: bandFrom(hw, 'dep') }, { name: 'Cho vay hệ thống', color: '--s2', data: hw.map(x => x.lendSys ?? 0), band: bandFrom(hw, 'lend') }, { name: 'Liên NH O/N', color: '--s4', data: hw.map(x => x.ibON ?? 0) }, { name: 'Tái cấp vốn', color: '--s1', data: hw.map(x => x.refi ?? 0) }, { name: 'Fed', color: '--s6', data: hw.map(x => x.fed ?? 0) }] },
       { id: 'd12', title: 'Cơ cấu nguồn vốn (tỷ VND)', stack: true, series: [{ name: 'CASA', color: '--s1', data: h.map(x => x.dep.casa) }, { name: 'TG <12 tháng', color: '--s2', data: h.map(x => x.dep.lt6 + x.dep.m6_12) }, { name: 'TG ≥12 tháng', color: '--s3', data: h.map(x => x.dep.gt12) }, { name: 'GTCG', color: '--s4', data: h.map(x => x.bonds) }, { name: 'Liên NH + NHNN', color: '--s5', data: h.map(x => x.ib) }, { name: 'Vốn CSH', color: '--s6', data: h.map(x => x.eq) }] },
     ] };
   }
@@ -3010,11 +3024,11 @@ function dashSeries(B) {
     { id: 'd11', title: 'Khoảng cách sản lượng (điểm %)', series: [{ name: 'Gap', color: '--s6', data: h.map(x => x.gap ?? 0) }], lines: [0], zero: false },
     { id: 'd2', title: 'Tỷ giá USD/VND', series: [{ name: 'USD/VND', color: '--s2', data: h.map(x => x.usd ?? 0) }], zero: false },
     { id: 'd8', title: 'Dự trữ ngoại hối (tỷ USD)', series: [{ name: 'Dự trữ', color: '--s1', data: h.map(x => x.reserves) }], lines: [60], note: 'ngưỡng ~3 tháng nhập khẩu' },
-    { id: 'd3', title: 'Lãi suất hệ thống (%)', series: [{ name: 'Huy động hệ thống', color: '--s3', data: h.map(x => x.depSys ?? 0) }, { name: 'Cho vay hệ thống', color: '--s2', data: h.map(x => x.lendSys ?? 0) }, { name: 'Chi phí vốn', color: '--s1', data: h.map(x => x.cof ?? 0) }, { name: 'Liên NH O/N', color: '--s4', data: h.map(x => x.ibON) }, { name: 'Tái cấp vốn', color: '--s6', data: h.map(x => x.refi) }] },
+    { id: 'd3', title: 'Lãi suất hệ thống (%)', series: [{ name: 'Huy động hệ thống', color: '--s3', data: h.map(x => x.depSys ?? 0), band: bandFrom(h, 'dep') }, { name: 'Cho vay hệ thống', color: '--s2', data: h.map(x => x.lendSys ?? 0), band: bandFrom(h, 'lend') }, { name: 'Chi phí vốn', color: '--s1', data: h.map(x => x.cof ?? 0) }, { name: 'Liên NH O/N', color: '--s4', data: h.map(x => x.ibON) }, { name: 'Tái cấp vốn', color: '--s6', data: h.map(x => x.refi) }] },
     { id: 'd9', title: 'Chu kỳ: BĐS & Fed', series: [{ name: 'Chỉ số nhiệt BĐS ×100', color: '--s2', data: h.map(x => x.re * 100) }, { name: 'Fed funds ×10', color: '--s1', data: h.map(x => (x.fed ?? 0) * 10) }, { name: 'Tín dụng YoY', color: '--s3', data: h.map(x => x.cg) }] },
     { id: 'd4', title: 'Tín dụng & M2 (% YoY)', series: [{ name: 'Tín dụng', color: '--s1', data: h.map(x => x.cg) }, { name: 'M2', color: '--s3', data: h.map(x => x.m2) }] },
-    { id: 'd5', title: 'Nợ xấu hệ thống (%)', series: [{ name: 'NPL', color: '--s2', data: h.map(x => x.npl) }], lines: [3] },
-    { id: 'd6', title: 'Sức khỏe ngân hàng (%)', series: [{ name: 'CAR thấp nhất', color: '--s1', data: h.map(x => x.minCar ?? 0) }, { name: 'NPL cao nhất', color: '--s2', data: h.map(x => x.maxNpl ?? 0) }], lines: [W.sbv.carMin] },
+    { id: 'd5', title: 'Nợ xấu hệ thống (%)', series: [{ name: 'NPL', color: '--s2', data: h.map(x => x.npl), band: bandFrom(h, 'npl') }], lines: [3] },
+    { id: 'd6', title: 'An toàn vốn & kỳ hạn (%)', series: [{ name: 'CAR hệ thống', color: '--s1', data: h.map(x => x.sysCar ?? x.minCar ?? 0), band: bandFrom(h, 'car') }, { name: 'LDR hệ thống', color: '--s3', data: h.map(x => x.sysLdr ?? x.loans / Math.max(1, x.deps ?? x.loans / 0.9) * 100), band: bandFrom(h, 'ldr') }, { name: 'Vốn NH cho vay TDH', color: '--s4', data: h.map(x => x.rng ? (x.rng.mlt[0] + x.rng.mlt[1]) / 2 : 0), band: bandFrom(h, 'mlt') }], lines: [W.sbv.carMin], note: `nét đứt: CAR tối thiểu ${W.sbv.carMin}%` },
     { id: 'd7', title: 'Dư nợ hệ thống (nghìn tỷ)', stack: true, series: [{ name: 'Tổng dư nợ', color: '--s1', data: h.map(x => x.loans / 1000) }] },
   ] };
 }
@@ -3051,7 +3065,7 @@ function drawDash(B) { // dashboard vẽ trên canvas của sân khấu, cùng m
     plotSeries(g, rect, c.series, { m0: m0c, ts, lines: c.lines, zero: c.zero, stack: c.stack, hover, marks });
     let lx = x + 6; g.font = '9.5px ' + cssVar('--mono'); g.textAlign = 'left'; const ly = y + ch - 5;
     c.series.forEach(sr => { const t = sr.name || ''; const w = g.measureText(t).width + 14; if (lx + w > x + cw - 4) return; g.fillStyle = dc(sr.color); g.fillRect(lx, ly - 7, 7, 7); g.fillStyle = '#8b949e'; g.fillText(t, lx + 10, ly); lx += w; });
-    if (c.note && lx + g.measureText(c.note).width < x + cw - 4) { g.fillStyle = '#6e7681'; g.fillText(c.note, lx + 4, ly); }
+    const noteB = [c.note, c.series.some(sr => sr.band) ? 'dải mờ: thấp–cao nhất các NH' : ''].filter(Boolean).join(' · '); if (noteB && lx + g.measureText(noteB).width < x + cw - 4) { g.fillStyle = '#6e7681'; g.fillText(noteB, lx + 4, ly); }
     Stage.panels.push({ k, x, y, w: cw, h: ch, rect, ts, n: Math.max(...c.series.map(sr => sr.data.length)) }); });
   if (!cv._bound) { cv._bound = true;
     cv.addEventListener('mousemove', e => { const r = cv.getBoundingClientRect(); const mx = e.clientX - r.left, my = e.clientY - r.top; const p = Stage.panels.find(q => mx >= q.x && mx <= q.x + q.w && my >= q.y && my <= q.y + q.h);
@@ -3064,7 +3078,7 @@ function plotSeries(g, r, series, opts = {}) { // bộ vẽ chuỗi thời gian 
   const padL = 34, padR = 6, padT = 4, padB = 12; const m0 = opts.m0 || 0;
   let lo, hi;
   if (opts.stack) { const tot = []; for (let i = 0; i < n; i++) tot.push(sum(series.map(l => l.data[i] || 0))); lo = 0; hi = Math.max(...tot) * 1.05 || 1; }
-  else { const all = series.flatMap(s => s.data).concat(opts.lines || []); lo = opts.zero === false ? Math.min(...all) : Math.min(0, ...all); hi = Math.max(...all); if (hi === lo) hi = lo + 1; const span = hi - lo; hi += span * 0.08; if (opts.zero === false) lo -= span * 0.08; }
+  else { const all = series.flatMap(s => s.data.concat(s.band ? s.band.lo.concat(s.band.hi).filter(v => v != null) : [])).concat(opts.lines || []); lo = opts.zero === false ? Math.min(...all) : Math.min(0, ...all); hi = Math.max(...all); if (hi === lo) hi = lo + 1; const span = hi - lo; hi += span * 0.08; if (opts.zero === false) lo -= span * 0.08; }
   const tight = hi - lo < 0.5 * Math.abs(hi);
   const fA = v => Math.abs(v) >= 1e6 ? (v / 1e6).toFixed(1).replace('.', ',') + 'tr' : Math.abs(v) >= 1000 ? (tight ? fmt0(v) : Math.round(v / 1000) + 'k') : (hi - lo > 20 ? v.toFixed(0) : v.toFixed(1).replace('.', ','));
   const ts = opts.ts && opts.ts.length === n ? opts.ts : null; const t0 = ts ? ts[0] : m0, t1 = ts ? ts[n - 1] : m0 + n - 1, tspan = Math.max(1e-9, t1 - t0); // trục thời gian: dòng tuần đứng đúng vị trí trong tháng
@@ -3077,12 +3091,15 @@ function plotSeries(g, r, series, opts = {}) { // bộ vẽ chuỗi thời gian 
   (opts.lines || []).forEach(v => { g.setLineDash([4, 3]); g.strokeStyle = '#ff7b72'; g.beginPath(); g.moveTo(r.x + padL, y(v)); g.lineTo(r.x + r.w - padR, y(v)); g.stroke(); g.setLineDash([]); });
   if (opts.stack) { const acc = new Array(n).fill(0);
     series.forEach(l => { g.fillStyle = dc(l.color); g.globalAlpha = 0.85; g.beginPath(); for (let i = 0; i < n; i++) { const v = acc[i] + (l.data[i] || 0); i ? g.lineTo(x(i), y(v)) : g.moveTo(x(i), y(v)); } for (let i = n - 1; i >= 0; i--) g.lineTo(x(i), y(acc[i])); g.closePath(); g.fill(); g.globalAlpha = 1; for (let i = 0; i < n; i++) acc[i] += l.data[i] || 0; }); }
-  else series.forEach(s => { g.strokeStyle = dc(s.color); g.lineWidth = 1.6; g.beginPath(); s.data.forEach((v, i) => i ? g.lineTo(x(i), y(v)) : g.moveTo(x(i), y(v))); g.stroke(); const last = s.data[s.data.length - 1]; g.fillStyle = dc(s.color); g.beginPath(); g.arc(x(s.data.length - 1), y(last), 2.5, 0, Math.PI * 2); g.fill(); });
+  else series.forEach(s => { if (!s.band) return; const L = s.band.lo, H = s.band.hi; g.fillStyle = dc(s.color); g.globalAlpha = 0.16; // dải mờ: thấp nhất–cao nhất giữa các ngân hàng
+    let run = []; const flush = () => { if (run.length >= 2) { g.beginPath(); run.forEach((i, k) => k ? g.lineTo(x(i), y(H[i])) : g.moveTo(x(i), y(H[i]))); run.slice().reverse().forEach(i => g.lineTo(x(i), y(L[i]))); g.closePath(); g.fill(); } run = []; };
+    for (let i = 0; i < s.data.length; i++) { if (L[i] != null && H[i] != null) run.push(i); else flush(); } flush(); g.globalAlpha = 1; });
+  if (!opts.stack) series.forEach(s => { g.strokeStyle = dc(s.color); g.lineWidth = 1.6; g.beginPath(); s.data.forEach((v, i) => i ? g.lineTo(x(i), y(v)) : g.moveTo(x(i), y(v))); g.stroke(); const last = s.data[s.data.length - 1]; g.fillStyle = dc(s.color); g.beginPath(); g.arc(x(s.data.length - 1), y(last), 2.5, 0, Math.PI * 2); g.fill(); });
   if (opts.marks) { g.fillStyle = '#e3b341'; for (const k in opts.marks) { const i = +k; if (i < n) { const px = x(i), py = r.y + r.h - padB - 1; g.beginPath(); g.moveTo(px, py - 5); g.lineTo(px - 3.5, py); g.lineTo(px + 3.5, py); g.closePath(); g.fill(); } } } // ▲ tháng có hành động
   const hv = opts.hover;
   if (hv != null && hv >= 0 && hv < n) {
     g.strokeStyle = '#e6edf3'; g.setLineDash([2, 3]); g.beginPath(); g.moveTo(x(hv), r.y + padT); g.lineTo(x(hv), r.y + r.h - padB); g.stroke(); g.setLineDash([]);
-    const rows = series.filter(s => s.data[hv] != null).map(s => ({ s, t: `${s.name || ''} ${Math.abs(s.data[hv]) >= 1000 ? fmt0(s.data[hv]) : s.data[hv].toFixed(2).replace('.', ',')}` }));
+    const fv = v => Math.abs(v) >= 1000 ? fmt0(v) : v.toFixed(2).replace('.', ','); const rows = series.filter(s => s.data[hv] != null).map(s => ({ s, t: `${s.name || ''} ${fv(s.data[hv])}${s.band && s.band.lo[hv] != null ? ` (${fv(s.band.lo[hv])}–${fv(s.band.hi[hv])})` : ''}` }));
     if (opts.marks && opts.marks[hv]) rows.push({ s: { color: '--s4' }, t: `▲ ${opts.marks[hv]} hành động (xem Dòng thời gian)` });
     g.font = '9.5px ' + cssVar('--mono'); const bw = Math.max(...rows.map(q => g.measureText(q.t).width), 50) + 16, bh = 12 * (rows.length + 1) + 6;
     let bx = x(hv) + 6; if (bx + bw > r.x + r.w - padR) bx = x(hv) - bw - 6; const by = r.y + padT + 1;
@@ -3099,7 +3116,7 @@ function lineChart(id, series, opts = {}) {
   c.width = Wd * dpr; c.height = Ht * dpr; const g = c.getContext('2d'); g.scale(dpr, dpr);
   const pad = { l: 42, r: 10, t: 10, b: 22 };
   const n = Math.max(...series.map(s => s.data.length)); if (n < 2) { g.fillStyle = cssVar('--muted'); g.font = '12px ' + cssVar('--font'); g.fillText('Cần ít nhất 2 tháng dữ liệu.', pad.l, 40); return; }
-  let all = series.flatMap(s => s.data).concat(opts.lines || []); let lo = opts.zero === false ? Math.min(...all) : Math.min(0, ...all), hi = Math.max(...all); if (hi === lo) hi = lo + 1; const span = hi - lo; hi += span * 0.08; if (opts.zero === false) lo -= span * 0.08;
+  let all = series.flatMap(s => s.data.concat(s.band ? s.band.lo.concat(s.band.hi).filter(v => v != null) : [])).concat(opts.lines || []); let lo = opts.zero === false ? Math.min(...all) : Math.min(0, ...all), hi = Math.max(...all); if (hi === lo) hi = lo + 1; const span = hi - lo; hi += span * 0.08; if (opts.zero === false) lo -= span * 0.08;
   const tightRange = hi - lo < 0.5 * Math.abs(hi);
   const fmtAx = v => Math.abs(v) >= 1e6 ? (v / 1e6).toFixed(2).replace('.', ',') + 'tr' : Math.abs(v) >= 1000 ? (tightRange ? fmt0(v) : Math.round(v / 1000) + 'k') : (hi - lo > 20 ? v.toFixed(0) : v.toFixed(1).replace('.', ','));
   g.font = '11px ' + cssVar('--mono'); pad.l = Math.max(pad.l, Math.max(g.measureText(fmtAx(hi)).width, g.measureText(fmtAx(lo)).width) + 12);
@@ -3110,13 +3127,16 @@ function lineChart(id, series, opts = {}) {
   for (let i = 0; i < n; i += stepL) g.fillText(W.dateStr(m0 + i), x(i), Ht - 6);
   (opts.lines || []).forEach(v => { g.setLineDash([4, 4]); g.strokeStyle = cssVar('--bad'); g.beginPath(); g.moveTo(pad.l, y(v)); g.lineTo(Wd - pad.r, y(v)); g.stroke(); g.setLineDash([]); });
   if (m0 < 0 && -m0 < n) { const xb = x(-m0); g.fillStyle = cssVar('--line'); g.globalAlpha = 0.35; g.fillRect(pad.l, pad.t, xb - pad.l, Ht - pad.t - pad.b); g.globalAlpha = 1; g.setLineDash([3, 3]); g.strokeStyle = cssVar('--muted'); g.beginPath(); g.moveTo(xb, pad.t); g.lineTo(xb, Ht - pad.b); g.stroke(); g.setLineDash([]); g.fillStyle = cssVar('--muted'); g.font = '10px ' + cssVar('--font'); g.textAlign = 'left'; g.fillText('lịch sử thật ◂ ▸ mô phỏng', Math.min(xb + 4, Wd - 150), pad.t + 10); }
+  series.forEach(s => { if (!s.band) return; const L = s.band.lo, H = s.band.hi; g.fillStyle = cssVar(s.color); g.globalAlpha = 0.14; // dải mờ: khoảng cao nhất–thấp nhất giữa các ngân hàng (vẽ từng đoạn liên tục, bỏ chỗ không có số)
+    let run = []; const flush = () => { if (run.length >= 2) { g.beginPath(); run.forEach((i, k) => k ? g.lineTo(x(i), y(H[i])) : g.moveTo(x(i), y(H[i]))); run.slice().reverse().forEach(i => g.lineTo(x(i), y(L[i]))); g.closePath(); g.fill(); } run = []; };
+    for (let i = 0; i < s.data.length; i++) { if (L[i] != null && H[i] != null) run.push(i); else flush(); } flush(); g.globalAlpha = 1; });
   series.forEach(s => { g.strokeStyle = cssVar(s.color); g.lineWidth = 2; g.beginPath(); s.data.forEach((v, i) => i ? g.lineTo(x(i), y(v)) : g.moveTo(x(i), y(v))); g.stroke();
     const last = s.data[s.data.length - 1]; g.fillStyle = cssVar(s.color); g.beginPath(); g.arc(x(s.data.length - 1), y(last), 3.5, 0, Math.PI * 2); g.fill(); });
   // hover: đường dọc + giá trị từng chuỗi
   const hi_ = opts.hover;
   if (hi_ != null && hi_ >= 0 && hi_ < n) {
     g.strokeStyle = cssVar('--fg'); g.lineWidth = 1; g.setLineDash([2, 3]); g.beginPath(); g.moveTo(x(hi_), pad.t); g.lineTo(x(hi_), Ht - pad.b); g.stroke(); g.setLineDash([]);
-    const rows = series.filter(s => s.data[hi_] != null).map(s => ({ s, t: `${s.name || ''} ${(Math.abs(s.data[hi_]) >= 1000 ? fmt0(s.data[hi_]) : s.data[hi_].toFixed(2).replace('.', ','))}` }));
+    const fv = v => Math.abs(v) >= 1000 ? fmt0(v) : v.toFixed(2).replace('.', ','); const rows = series.filter(s => s.data[hi_] != null).map(s => ({ s, t: `${s.name || ''} ${fv(s.data[hi_])}${s.band && s.band.lo[hi_] != null ? ` (${fv(s.band.lo[hi_])}–${fv(s.band.hi[hi_])})` : ''}` }));
     g.font = '11px ' + cssVar('--mono'); const bw = Math.max(...rows.map(r => g.measureText(r.t).width), 60) + 18; const bh = 14 * (rows.length + 1) + 6;
     let bx = x(hi_) + 8; if (bx + bw > Wd - pad.r) bx = x(hi_) - bw - 8; const by = pad.t + 2;
     g.fillStyle = cssVar('--panel'); g.strokeStyle = cssVar('--line'); g.fillRect(bx, by, bw, bh); g.strokeRect(bx, by, bw, bh);
@@ -3169,11 +3189,11 @@ function drawBalanceCharts(B) {
 }
 function drawComplyCharts(B) {
   const h = B.hist.slice(-dashRange); if (h.length < 2) return; const m0 = h[0].m; const S = W.sbv;
-  lineChart('k1', [{ name: 'CAR', color: '--s1', data: h.map(x => x.car) }], { m0, lines: [S.carMin] });
-  lineChart('k2', [{ name: 'LDR', color: '--s3', data: h.map(x => x.ldr) }], { m0, lines: [S.ldrMax] });
-  lineChart('k3', [{ name: 'Vốn NH cho vay TDH', color: '--s4', data: h.map(x => x.mlt) }, { name: 'Dư nợ TDH / tổng dư nợ', color: '--s2', data: h.map(x => x.mltSh ?? 0) }], { m0, lines: [S.mltMax] });
-  lineChart('k4', [{ name: 'Dự trữ thanh khoản', color: '--s6', data: h.map(x => x.liq) }], { m0, lines: [10] });
-  lineChart('k5', [{ name: 'Nợ xấu nội bảng', color: '--s2', data: h.map(x => x.npl) }, { name: 'Nợ xấu gộp (VAMC)', color: '--s5', data: h.map(x => x.nplG ?? x.npl) }], { m0, lines: [3] });
+  lineChart('k1', [{ name: 'CAR', color: '--s1', data: h.map(x => x.car), band: bandFrom(h, 'car') }], { m0, lines: [S.carMin] });
+  lineChart('k2', [{ name: 'LDR', color: '--s3', data: h.map(x => x.ldr), band: bandFrom(h, 'ldr') }], { m0, lines: [S.ldrMax] });
+  lineChart('k3', [{ name: 'Vốn NH cho vay TDH', color: '--s4', data: h.map(x => x.mlt), band: bandFrom(h, 'mlt') }, { name: 'Dư nợ TDH / tổng dư nợ', color: '--s2', data: h.map(x => x.mltSh ?? 0) }], { m0, lines: [S.mltMax] });
+  lineChart('k4', [{ name: 'Dự trữ thanh khoản', color: '--s6', data: h.map(x => x.liq), band: bandFrom(h, 'liq') }], { m0, lines: [10] });
+  lineChart('k5', [{ name: 'Nợ xấu nội bảng', color: '--s2', data: h.map(x => x.npl), band: bandFrom(h, 'npl') }, { name: 'Nợ xấu gộp (VAMC)', color: '--s5', data: h.map(x => x.nplG ?? x.npl) }], { m0, lines: [3] });
   lineChart('k6', [{ name: 'Tín dụng YTD', color: '--s1', data: h.map(x => x.growth) }, { name: 'Room', color: '--s2', data: h.map(x => x.room ?? 0) }], { m0 });
 }
 function drawSystemCharts() {
@@ -3184,7 +3204,7 @@ function drawSystemCharts() {
   barChart('s4', bs.map(b => ({ label: b.code, value: b.hist.length ? b.hist[b.hist.length - 1].roe : 0, color: stColor(0, (b.hist.length ? b.hist[b.hist.length - 1].roe : 0) >= 12, (b.hist.length ? b.hist[b.hist.length - 1].roe : 0) >= 6) })), { fmt: pct });
   barChart('s5', bs.map(b => ({ label: b.code, value: b.liqReserve(), color: stColor(0, b.liqReserve() >= 13, b.liqReserve() >= 10) })), { line: 10, fmt: pct });
   barChart('s6', bs.map(b => ({ label: b.code, value: b.totalAssets() / 1000, color: b.type === 'sob' ? '--s1' : '--s6' })), { fmt: v => fmt0(v) + 'k' });
-  const h = W.hist.slice(-dashRange); if (h.length >= 2) { const m0 = h[0].m; lineChart('s7', [{ name: 'Dư nợ hệ thống', color: '--s2', data: h.map(x => x.loans / 1000) }, { name: 'Tiền gửi hệ thống', color: '--s3', data: h.map(x => (x.deps ?? x.loans / 0.9) / 1000) }], { m0 }); lineChart('s8', [{ name: 'LDR hệ thống', color: '--s1', data: h.map(x => x.loans / Math.max(1, x.deps ?? x.loans / 0.9) * 100) }, { name: 'Nợ xấu hệ thống', color: '--s2', data: h.map(x => x.npl) }, { name: 'CAR thấp nhất', color: '--s4', data: h.map(x => x.minCar ?? 0) }], { m0 });
+  const h = W.hist.slice(-dashRange); if (h.length >= 2) { const m0 = h[0].m; lineChart('s7', [{ name: 'Dư nợ hệ thống', color: '--s2', data: h.map(x => x.loans / 1000) }, { name: 'Tiền gửi hệ thống', color: '--s3', data: h.map(x => (x.deps ?? x.loans / 0.9) / 1000) }], { m0 }); lineChart('s8', [{ name: 'LDR hệ thống', color: '--s1', data: h.map(x => x.sysLdr ?? x.loans / Math.max(1, x.deps ?? x.loans / 0.9) * 100), band: bandFrom(h, 'ldr') }, { name: 'Nợ xấu hệ thống', color: '--s2', data: h.map(x => x.npl), band: bandFrom(h, 'npl') }, { name: 'CAR hệ thống', color: '--s4', data: h.map(x => x.sysCar ?? x.minCar ?? 0), band: bandFrom(h, 'car') }], { m0 });
     const f = h.filter(x => x.treasury != null); if (f.length >= 2) { const mf = f[0].m; lineChart('s9', [{ name: 'Tiền gửi KBNN', color: '--s1', data: f.map(x => x.treasury / 1000) }, { name: 'Giải ngân ĐTC tháng', color: '--s3', data: f.map(x => x.pubInv / 1000) }], { m0: mf }); lineChart('s10', [{ name: 'Phát hành TPCP', color: '--s2', data: f.map(x => x.bondIss / 1000) }, { name: 'Thâm hụt', color: '--s4', data: f.map(x => x.deficit / 1000) }, { name: 'Lợi suất ×10', color: '--s1', data: f.map(x => (x.gbY ?? 0) * 10) }], { m0: mf }); } }
 }
 function drawCharts(B) {
