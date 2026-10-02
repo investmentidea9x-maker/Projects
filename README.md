@@ -299,6 +299,30 @@ Khối tài khóa chạy mỗi tháng (tham số xấp xỉ 2025, tỷ VND/năm:
 
 **Mốc kiểm tra** (`node tools/macrotest.js`, 15 năm, 3 seed + kịch bản Thống đốc hạ TCV về 2,5 rồi giữ): (1) ≥ 2 chu kỳ tăng TCV ≥ 1 điểm: đạt 2/3 seed (seed 3 chỉ 1 chu kỳ: 2026–2027 +2,5, sau đó CPI ≤ 5,5 và các lần tăng rời rạc 0,25–0,5). (2) tín dụng vượt GDP danh nghĩa > 4 điểm suốt 24 tháng → CPI > 5 trong 6 quý: phần lớn không kiểm tra được vì quy tắc tăng lãi chặn sau 9 tháng và cầu tín dụng của engine không tạo đợt bùng nổ 24 tháng (kể cả giữ TCV 2,5 suốt 10 năm, tín dụng bình quân chỉ 10,5% vì LDR và LCR ràng buộc nguồn); đợt duy nhất gặp (seed 1, cuối ván) CPI cao nhất 4,7 vì NHNN đã tăng 3 điểm trong đợt đó. (3) TCV − CPI không âm quá 4 quý: đạt (dài nhất 0–5 tháng). (4) M2/GDP danh nghĩa: tăng cả ván ở mọi seed (1,27–1,30 → 1,37–1,54) nhưng vẫn có 3–6 năm giảm so với năm trước (năm CPI vọt hoặc NHNN thắt chặt làm tín dụng chậm hơn GDP danh nghĩa; muốn M2 tăng đều hơn GDP danh nghĩa cần nguồn tạo tiền ngoài tín dụng, như NHNN mua USD tích lũy dự trữ). (5) lãi cho vay bình quân ≥ 5,5 dù TCV 2,5: đạt (thấp nhất 6,4–6,7; lãi ngắn hạn chạm sàn 5,5 nhiều năm). Lưu ý: với số liệu thật T10/2025 (tín dụng 19% vs GDP danh nghĩa 11,6) CPI dự báo 4 quý đã là 4,7 nên quy tắc tăng lãi kích hoạt ngay từ T11/2025 (+1 đến +2,5 điểm trong năm đầu), rồi 2026–2027 CPI 4,7–5,5.
 
+## Dư nợ cơ cấu (BĐS), NWC/CAPEX và đường cong lãi suất
+
+**Dư nợ cơ cấu** là trạng thái riêng của từng ngân hàng (`rsTr`: các đợt `{ amt, accr, m0, x }`):
+
+| Khâu | Quy tắc trong engine |
+|---|---|
+| Hình thành | Khi sốc "Khủng hoảng TPDN BĐS" vừa nổ hoặc chỉ số BĐS thấp hơn 12 tháng trước ≥ 10% suốt 3 tháng: mỗi ngân hàng chuyển x = 20–40% dư nợ BĐS nhóm 1 sang cơ cấu, gia hạn 3 năm; mỗi ngân hàng tối đa một đợt / 36 tháng |
+| Dòng tiền | Không thu gốc, không thu lãi bằng tiền; lãi vẫn ghi vào thu nhập lãi dưới dạng lãi dự thu (stock riêng, là tài sản phải thu trên bảng cân đối) |
+| Thanh khoản | Tiền thu thật giảm đúng phần lãi và gốc đó → tiền tự có tại NHNN thiếu nhiều hơn (settle), ghi `selfPos` trong lịch sử ngân hàng |
+| LDR, SFL, CAR | Vẫn nằm trong dư nợ (LDR, room); tính là trung dài hạn (SFL); hệ số rủi ro 150% |
+| LCR | Dòng vào 30 ngày từ phần này = 0 (không nằm trong sổ thu nợ) |
+| Giá huy động | Cơ cấu/dư nợ ≥ 5%: phụ trội 0,5 + 0,1 mỗi điểm vượt (tối đa 1,5), ≥ 2%: 0,2; áp cho cả 3–6T và ≥12T; nâng dần 0,25/tháng |
+| Giá cho vay mới | +0,3 điểm cho mỗi 5% dư nợ cơ cấu (trong `rateS`/`rateL`, mọi ngân hàng) |
+| Kết thúc | Sau 36 tháng: 40% trả gốc và lãi dự thu bằng tiền, 60% chuyển nhóm 3 (trích dự phòng, CAR giảm), thoái 60% lãi dự thu khỏi lợi nhuận |
+| Nới SFL | Kẹt trần vốn ngắn hạn cho vay TDH chỉ tạo phụ trội ≥12T (0,3), không còn là cờ thiếu nguồn chung; nới trần chỉ hạ phụ trội ≥12T; dòng [sbv] 12 tháng sau khi nới ghi phụ trội 3–6T và ≥12T trước/sau (`depPrem`) |
+
+Hiển thị: bảng cân đối có dòng nợ cơ cấu và lãi dự thu; dòng [close] ghi nợ cơ cấu, lãi dự thu, phụ trội, tiền tự có bình quân; biểu đồ A3 (ngân hàng) và A1 (hệ thống) thêm đường nợ cơ cấu; [act] NHNN khi cơ cấu hệ thống ≥ 5%; lịch sử `rs`, `rsSh`, `rsAccr`, `rsAccrM`, `selfPos`, `rsPrem` (ngân hàng), `rsSys`, `rsAccrSys` (hệ thống).
+
+**Mốc kiểm tra** (`node tools/rstest.js`: ván ngân hàng, NHNN giữ TCV, tháng 6 nổ khủng hoảng TPDN BĐS): (1) cơ cấu hệ thống ≥ 5% từ tháng 7 (7,2%): đạt. (2) lãi 3–6T hệ thống +2,6 điểm sau 6 tháng, TCV giữ 4,5: đạt (mục tiêu ≥ 0,5). (3) ngân hàng cơ cấu ≥ 8%: lãi dự thu 3 tháng 440–1.130 tỷ vào lợi nhuận, tiền tự có bình quân giảm ở 4/6 ngân hàng (VCB, MB, VPB, STB); TCB và ACB tiền tự có cải thiện vì phụ trội huy động hút tiền gửi về nhanh hơn phần hụt thu. (4) nới SFL (hai ván cùng seed không sốc, siết trần tháng 12, ván A nới tháng 16, ván B đối chứng): chênh phụ trội 3–6T giữa hai ván không âm quá 0,2, chênh phụ trội ≥12T giảm hơn 3–6T ít nhất 0,1. (5) đồng nhất thức bảng cân đối và sổ tiền cơ sở lệch 0 suốt ván (phần thoái lãi dự thu được tách khỏi lãi thu bằng tiền ở bước bù trừ): đạt. (6) hết hạn 36 tháng: cơ cấu hệ thống 6,2 → 0, nợ xấu 2,6 → 6,0: đạt.
+
+**NWC / CAPEX**: vay sản xuất kinh doanh đã tách theo kỳ hạn qua `mltShare.corp` (35% TDH khởi đầu): vốn lưu động (NWC) là ngắn hạn (thu nợ 9 tháng, hệ số rủi ro 90%, cầu theo `creditDemandS`), đầu tư TSCĐ (CAPEX) là trung dài hạn (thu nợ 60 tháng, hệ số 125%, cầu theo `creditDemandL`, tính vào SFL). Bảng "Danh mục cho vay theo phân khúc" có cột "Ngắn hạn / TDH" ghi rõ NWC/CAPEX cho SXKD và tên hai phần cho các ngành khác.
+
+**Đường cong lãi suất hệ thống** (tab Vĩ mô và Tổng quan, cả hai chế độ): huy động theo kỳ hạn CASA / <6T / 6–12T / ≥12T và cho vay theo LNH O/N / ngắn hạn / TDH; mỗi biểu đồ ba đường: hiện tại (có nhãn số), 12 tháng trước, đầu ván. Lịch sử tháng và tuần thêm `lt6`, `m6_12`, `gt12`, `lendS`, `lendL`.
+
 ## CAMELS: xếp hạng ngân hàng và hệ thống
 
 CAMELS là **bộ biểu đồ của bảng điều khiển** (thay cho các biểu đồ chỉ số cũ, cả hai chế độ), mỗi mục tách thành từng cấu phần. Thanh tab nhỏ phía trên bảng điều khiển lọc biểu đồ theo nhóm: **Tổng quan** (biểu đồ đầu của mỗi mục, hạng từng cấu phần, tổng hợp, phân bố hạng ở chế độ Thống đốc, vài biểu đồ vĩ mô), **Vốn / Tài sản / Quản trị / Sinh lời / Thanh khoản / Thị trường** (toàn bộ cấu phần của mục đó), **Vĩ mô** (CPI/GDP, tỷ giá, lãi suất, tín dụng, dự trữ, Taylor, gap, BĐS/Fed) và **Tất cả**; bên phải là khoảng thời gian 12T / 36T / từ 2022. Nhóm ít biểu đồ vẽ 2 cột, ô cao tối đa 320px, chú thích xuống dòng khi không đủ chỗ.
