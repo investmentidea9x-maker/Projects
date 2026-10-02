@@ -283,6 +283,21 @@ Khối tài khóa chạy mỗi tháng (tham số xấp xỉ 2025, tỷ VND/năm:
 - **Mục tiêu GDP 8%** của Chính phủ (tiềm năng mô hình 7,5%): KPI GDP đổi màu theo mục tiêu 8%; điểm Thống đốc cộng 3 khi đạt, 1 khi ≥ 6,5, trừ khi dưới 5,5. Chế độ NHNN có quyết định "GDP dưới mục tiêu 8%" (giảm lãi theo Taylor, nới room, bơm ròng, hoặc để tài khóa gánh). Ở chế độ ngân hàng, NHNN tự động giảm lãi 0,25 điểm mỗi 6 tháng và nới room thêm 1 điểm khi GDP dưới 8% mà CPI dưới 4,5% và tỷ giá ổn. Đẩy tăng trưởng trên tiềm năng làm lạm phát và BĐS nóng: đó là đánh đổi.
 - Hiển thị: bảng "Thị trường/Vĩ mô" có tồn quỹ KBNN, giải ngân tháng/lũy kế/kế hoạch, phát hành TPCP, thâm hụt, mục tiêu GDP; tab Hệ thống có hai biểu đồ tài khóa; bảng cân đối ngân hàng quốc doanh có dòng tiền gửi KBNN; báo cáo tháng có dòng tài khóa.
 
+## CAMELS: xếp hạng ngân hàng và hệ thống
+
+Tab **CAMELS** (cả hai chế độ), ô KPI "CAMELS" ở tổng quan ngân hàng, dòng [close] mỗi tháng (`CAMELS 2 Khá (C3 A2 M1 E2 L3 S2)`), lịch sử ngân hàng (`camels`, `camelsComp`) và lịch sử hệ thống (`camels.rating`, `dist`). Hạng 1 mạnh → 5 nguy hiểm, ngưỡng trong `CAMELS_T`, dùng chung cho ngân hàng (`Bank.camels`) và hệ thống (`World.camelsSys`, chỉ số gộp theo tài sản, kèm phân bố hạng của các ngân hàng).
+
+| Nhóm | Chỉ số gốc | Xếp hạng |
+|---|---|---|
+| C vốn | CAR, vốn cấp 1/RWA, vốn tự có/tổng tài sản | CAR so tối thiểu + bộ đệm: +4 → 1, +2 → 2, +1 → 3, đạt → 4, dưới → 5 |
+| A tài sản | nợ xấu nội bảng và gộp VAMC, bao phủ dự phòng, nợ nhóm 2, tỷ trọng BĐS | nợ xấu gộp < 1,5 → 1, < 2,5 → 2, < 3,5 → 3, < 5 → 4; bao phủ < 60% hoặc nhóm 2 > 4% cộng một bậc |
+| M quản trị | số vi phạm đang treo (giám sát LDR/LCR, CAR dưới chuẩn, cắt room, mất thanh khoản, vay đặc biệt), CIR, tiền phạt, uy tín | 0 vi phạm và CIR < 40 → 1, 0 → 2, 1 → 3, 2 → 4, ≥ 3 → 5; uy tín dưới −1 cộng một bậc |
+| E sinh lời | ROA, ROE, NIM 12 tháng, CIR | ROA ≥ 1,5 → 1, ≥ 1,0 → 2, ≥ 0,6 → 3, ≥ 0,2 → 4 |
+| L thanh khoản | LDR, LCR, DTTK, OMO/tiền gửi | LCR ≥ ngưỡng + 30 và LDR ≤ trần − 3 → 1; LCR ≥ ngưỡng + 10 và LDR ≤ trần → 2; LCR ≥ ngưỡng → 3; ≥ 30 → 4; OMO > 5% tiền gửi hoặc DTTK < 10% cộng một bậc |
+| S thị trường | vốn ngắn hạn cho vay TDH, trạng thái ngoại tệ ròng/vốn (tài sản ngoại tệ − vay nước ngoài), tỷ trọng BĐS, TPCP/tổng tài sản, dư nợ TDH | MLT ≤ trần − 10 → 1, − 5 → 2, − 2 → 3, đạt → 4; NOP ngoài ±20% hoặc BĐS > 35% cộng một bậc |
+
+Tổng hợp = 0,20 C + 0,25 A + 0,15 M + 0,15 E + 0,15 L + 0,10 S, làm tròn thành hạng 1–5 (Mạnh, Khá, Trung bình, Yếu, Nguy hiểm). Khởi đầu ván (số liệu 2025): hệ thống hạng 2, 7 ngân hàng hạng 2 và 2 hạng 3 (Agribank vì CAR và ROA, VPB vì nợ xấu gộp 9%).
+
 ## Cầu tín dụng: hiệu chuẩn lại, BĐS đảo nợ và vay gối đầu
 
 Cầu vay mỗi ngành, mỗi kỳ (`flowA` mục 5) = đảo nợ đến hạn × (1 − (1 − E) × k) + dư nợ ngành × hệ số cầu × cơ sở × E × khẩu vị (+ 0,7 × đầu tư công cho vay dự án). E chỉ phạt ngân hàng niêm yết cao hơn mặt bằng cùng kỳ hạn.
