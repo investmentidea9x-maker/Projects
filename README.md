@@ -323,6 +323,20 @@ Hiển thị: bảng cân đối có dòng nợ cơ cấu và lãi dự thu; dò
 
 **Đường cong lãi suất hệ thống** (tab Vĩ mô và Tổng quan, cả hai chế độ): huy động theo kỳ hạn CASA / <6T / 6–12T / ≥12T và cho vay theo LNH O/N / ngắn hạn / TDH; mỗi biểu đồ ba đường: hiện tại (có nhãn số), 12 tháng trước, đầu ván. Lịch sử tháng và tuần thêm `lt6`, `m6_12`, `gt12`, `lendS`, `lendL`.
 
+## Đảo nợ ngầm (evergreening)
+
+Cơ chế ngầm, không hiện lên NPL: khoản vay BĐS (và một phần CAPEX sản xuất kinh doanh) sắp chuyển nhóm 2/3 được ngân hàng cho vay mới để trả cũ, ở lại nhóm 1 với chi phí cao hơn. Trạng thái `roll[re|corp] = { amt, prem, cap }` mỗi ngân hàng.
+
+- **Khi nào đảo**: tại mỗi lần chuyển nhóm (nhóm 1 → 2 và 2 → 3) của BĐS và SXKD, một phần `rollProb` được đảo thay vì chuyển nhóm: cơ sở 0,7 (BĐS) / 0,35 (SXKD); × thị trường BĐS (chỉ số ≥ 0,9: 1; 0,6–0,9: 0,4–1; đóng băng < 0,6: 0,15); +0,2 khi nợ xấu gộp 2,5–3,5% (áp lực giữ dưới 3%); −0,3 khi đang tái cấp vốn đặc biệt hoặc CAR dưới tối thiểu + 1; nhân (1 − đảo/15% dư nợ); tối đa 0,9.
+- **Chi phí**: mỗi lần đảo phụ trội +1,5 điểm trên lãi hợp đồng (phụ trội bình quân theo dư nợ, tăng dần qua các vòng).
+- **Lãi**: lãi (kể cả phụ trội) ghi vào thu nhập lãi nhưng **nhập gốc** (dư nợ và `cap` tăng), không thu tiền; tiền tự có thiếu như nợ cơ cấu. Tín dụng báo cáo vì thế tăng ảo đúng phần lãi nhập gốc.
+- **Đáo hạn** 12 tháng (1/12 mỗi tháng): đảo tiếp theo `rollProb` (phụ trội +1,5 nữa); phần không đảo được: BĐS ≥ 0,9 thì chủ đầu tư bán hàng trả nợ bằng tiền, ngược lại bung thành nhóm 3. Khi bung > 0,3% dư nợ có nhật ký "Đảo nợ ngầm … không tiếp tục được".
+- **NPL**: `nplRatio`, `nplGross`, CAMELS, giám sát đều dùng nợ xấu báo cáo (tuân thủ); `nplTrue` = (nợ xấu + đã đảo)/dư nợ là nợ xấu bản chất, hiện ở bảng cân đối, dòng [close], dòng [sbv], biểu đồ A1 (ngân hàng và hệ thống, đường "Bản chất"), [act] NHNN khi đảo hệ thống ≥ 3%.
+- **Thanh tra NHNN** (sự kiện): ngân hàng đảo > 2% dư nợ bị phân loại lại 50% phần đảo vào nhóm 3, tính là vi phạm (phạt, cắt room).
+- Lịch sử ngân hàng: `roll`, `rollSh`, `nplTrue`, `rollCapM`, `rollNewM`, `rollFailM`, `rollRepM`, `rollPrem`; hệ thống: `rollSys`, `nplTrue`.
+
+Kiểm tra (`node tools/rolltest.js`, sốc TPDN BĐS tháng 6, thanh tra tháng 20, ép BĐS đóng băng tháng 30–42): đảo hệ thống lên ~1,7% dư nợ sau sốc; tháng 18 NPL báo cáo 2,4 vs bản chất 3,9; ngân hàng đảo 2,5–4% có lãi nhập gốc 1.400–2.000 tỷ/12 tháng; thanh tra phân loại lại ở 4–5 ngân hàng; khi đóng băng phần đảo bung dần thành nhóm 3; đồng nhất thức và sổ tiền cơ sở lệch 0 (lãi nhập gốc được tách khỏi lãi thu bằng tiền ở bước bù trừ).
+
 ## CAMELS: xếp hạng ngân hàng và hệ thống
 
 CAMELS là **bộ biểu đồ của bảng điều khiển** (thay cho các biểu đồ chỉ số cũ, cả hai chế độ), mỗi mục tách thành từng cấu phần. Thanh tab nhỏ phía trên bảng điều khiển lọc biểu đồ theo nhóm: **Tổng quan** (biểu đồ đầu của mỗi mục, hạng từng cấu phần, tổng hợp, phân bố hạng ở chế độ Thống đốc, vài biểu đồ vĩ mô), **Vốn / Tài sản / Quản trị / Sinh lời / Thanh khoản / Thị trường** (toàn bộ cấu phần của mục đó), **Vĩ mô** (CPI/GDP, tỷ giá, lãi suất, tín dụng, dự trữ, Taylor, gap, BĐS/Fed) và **Tất cả**; bên phải là khoảng thời gian 12T / 36T / từ 2022. Nhóm ít biểu đồ vẽ 2 cột, ô cao tối đa 320px, chú thích xuống dòng khi không đủ chỗ.
