@@ -283,6 +283,14 @@ Khối tài khóa chạy mỗi tháng (tham số xấp xỉ 2025, tỷ VND/năm:
 - **Mục tiêu GDP 8%** của Chính phủ (tiềm năng mô hình 7,5%): KPI GDP đổi màu theo mục tiêu 8%; điểm Thống đốc cộng 3 khi đạt, 1 khi ≥ 6,5, trừ khi dưới 5,5. Chế độ NHNN có quyết định "GDP dưới mục tiêu 8%" (giảm lãi theo Taylor, nới room, bơm ròng, hoặc để tài khóa gánh). Ở chế độ ngân hàng, NHNN tự động giảm lãi 0,25 điểm mỗi 6 tháng và nới room thêm 1 điểm khi GDP dưới 8% mà CPI dưới 4,5% và tỷ giá ổn. Đẩy tăng trưởng trên tiềm năng làm lạm phát và BĐS nóng: đó là đánh đổi.
 - Hiển thị: bảng "Thị trường/Vĩ mô" có tồn quỹ KBNN, giải ngân tháng/lũy kế/kế hoạch, phát hành TPCP, thâm hụt, mục tiêu GDP; tab Hệ thống có hai biểu đồ tài khóa; bảng cân đối ngân hàng quốc doanh có dòng tiền gửi KBNN; báo cáo tháng có dòng tài khóa.
 
+## Cầu tín dụng: hiệu chuẩn lại, BĐS đảo nợ và vay gối đầu
+
+Cầu vay mỗi ngành, mỗi kỳ (`flowA` mục 5) = đảo nợ đến hạn × (1 − (1 − E) × k) + dư nợ ngành × hệ số cầu × cơ sở × E × khẩu vị (+ 0,7 × đầu tư công cho vay dự án). E chỉ phạt ngân hàng niêm yết cao hơn mặt bằng cùng kỳ hạn.
+
+- **Vì sao trước đây cầu luôn vượt xa room**: hệ số cầu = 1 + 0,12 × (GDP − 6,5) − 0,12 × (lãi vay − 8,3). Mốc lãi 8,3/10,4 đặt theo mặt bằng cũ 9,5; sau khi tách kỳ hạn, lãi ngắn hạn thực chỉ 5–6% nên riêng số hạng lãi cộng 0,3 cho mọi ván, GDP 8 so mốc 6,5 cộng 0,18 nữa: hệ số 1,46 × cơ sở 15%/năm × khẩu vị 1,1 = cầu mới 24%/năm.
+- **Sửa**: mốc lãi = mặt bằng khởi đầu ván (`lendRef`, hệ số bắt đầu ở 1,0); mốc tăng trưởng = tiềm năng nội sinh; cơ sở `MAC.demBase` 12%/năm (tín dụng VN 12–15%). Kết quả: hệ số 0,9–1,2 ở pha bình thường, cầu/đến hạn 1,36–1,44 (trước 1,5–1,6), ràng buộc thật là LDR, CAR, room; tín dụng 7–17%/năm.
+- **BĐS đảo nợ và gối đầu** (ý người dùng): chủ đầu tư đảo nợ gần như toàn bộ để làm dự án gối đầu và giữ đất, nên hệ số đảo nợ của BĐS k = 0,15 (ngành khác 0,5: lãi cao hơn thị trường thì nửa khách cũ không đảo); cầu mới BĐS = cơ sở + `MAC.demRe` 4 điểm (dự án mới chồng dự án cũ); ở vòng phân bổ thứ hai, BĐS được nhận thêm tới 60% suất (ngành khác 30%) vì tài sản bảo đảm dễ định giá, ngân hàng dễ dồn phần dư vào. Tỷ trọng BĐS trong dư nợ hệ thống đi từ 25,7% lên ~30% sau 5 năm (trước đây đứng yên hoặc giảm).
+
 ## Rà soát bản tám: LDR theo quy định, GTCG, kịch bản KBNN, LDR hệ thống, đồng nhất thức bảng cân đối
 
 - **Công thức LDR trong engine** (`Bank.ldr`): L = dư nợ cho vay khách hàng (gộp mọi nhóm nợ, không gồm cho vay TCTD, TPDN); D = tiền gửi khách hàng mọi kỳ hạn + **GTCG đã phát hành mọi kỳ hạn** (`bonds` + trái phiếu thứ cấp) + vốn vay dài hạn nước ngoài + tiền gửi KBNN × tỷ lệ theo lộ trình; không gồm tiền gửi/vay TCTD khác, vay NHNN (OMO, tái cấp vốn), vốn tự có. `ldrAdj` hiệu chỉnh để LDR khởi đầu khớp số công bố.
