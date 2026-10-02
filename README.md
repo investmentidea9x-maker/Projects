@@ -285,7 +285,7 @@ Khối tài khóa chạy mỗi tháng (tham số xấp xỉ 2025, tỷ VND/năm:
 
 ## CAMELS: xếp hạng ngân hàng và hệ thống
 
-CAMELS là **bộ biểu đồ của bảng điều khiển** (thay cho các biểu đồ chỉ số cũ, cả hai chế độ), mỗi mục tách thành từng cấu phần:
+CAMELS là **bộ biểu đồ của bảng điều khiển** (thay cho các biểu đồ chỉ số cũ, cả hai chế độ), mỗi mục tách thành từng cấu phần. Thanh tab nhỏ phía trên bảng điều khiển lọc biểu đồ theo nhóm: **Tổng quan** (biểu đồ đầu của mỗi mục, hạng từng cấu phần, tổng hợp, phân bố hạng ở chế độ Thống đốc, vài biểu đồ vĩ mô), **Vốn / Tài sản / Quản trị / Sinh lời / Thanh khoản / Thị trường** (toàn bộ cấu phần của mục đó), **Vĩ mô** (CPI/GDP, tỷ giá, lãi suất, tín dụng, dự trữ, Taylor, gap, BĐS/Fed) và **Tất cả**; bên phải là khoảng thời gian 12T / 36T / từ 2022. Nhóm ít biểu đồ vẽ 2 cột, ô cao tối đa 320px, chú thích xuống dòng khi không đủ chỗ.
 
 | Mục | Biểu đồ | Chỉ số |
 |---|---|---|

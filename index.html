@@ -175,8 +175,8 @@ canvas#hud{position:absolute;left:0;top:0;width:100%;aspect-ratio:480/140;height
 .stage{display:flex;flex-direction:column;background:#0b1020;border:1px solid #30363d;border-radius:8px;overflow:hidden;height:calc(100vh - 12px);min-width:0;box-sizing:border-box}
 .dash-area{position:relative;flex:1 1 auto;min-height:0}
 #dashcv{position:absolute;inset:0;width:100%;height:100%;display:block}
-.dash-ctl{position:absolute;top:5px;right:8px;display:flex;gap:4px;z-index:2}
-.dash-ctl button{background:#161b22;color:#c9d1d9;border:1px solid #30363d;border-radius:4px;font:11px var(--mono);padding:2px 7px;cursor:pointer}.dash-ctl button.on{background:#1f6feb;border-color:#1f6feb;color:#fff}
+.dash-ctl{position:absolute;top:4px;left:8px;right:8px;display:flex;gap:3px;align-items:center;flex-wrap:wrap;z-index:2}.dash-ctl .sp{flex:1 1 auto}.dash-ctl button.grp{border-color:#3d444d}.dash-ctl button.grp.on{background:#238636;border-color:#238636}
+.dash-ctl button{background:#161b22;color:#c9d1d9;border:1px solid #30363d;border-radius:4px;font:10.5px var(--mono);padding:2px 5px;cursor:pointer;white-space:nowrap}.dash-ctl button.on{background:#1f6feb;border-color:#1f6feb;color:#fff}
 .stage .scene-wrap{flex:0 0 auto;border:0;border-radius:0;border-top:1px solid #30363d}
 .term-wrap{position:relative;min-width:0}
 .term{background:#0d1117;color:#c9d1d9;font-family:var(--mono);font-size:12px;border:1px solid #30363d;border-radius:8px;padding:8px 10px;overflow:auto;position:absolute;inset:0;box-sizing:border-box}
@@ -3130,7 +3130,11 @@ function reportPane() {
 }
 
 /* ---------- Bảng điều khiển (chuỗi thời gian) ---------- */
-let dashRange = 36;
+let dashRange = 36; let dashGrp = 'tq'; // nhóm biểu đồ đang xem trên bảng điều khiển
+const DASH_GRPS = [['tq', 'Tổng quan', 'Hạng CAMELS, biểu đồ đầu của mỗi mục và vĩ mô'], ['C', 'Vốn', 'C – an toàn vốn, đòn bẩy'], ['A', 'Tài sản', 'A – nợ xấu, dự phòng, cơ cấu dư nợ'], ['M', 'Quản trị', 'M – CIR, tuân thủ'], ['E', 'Sinh lời', 'E – ROA/ROE, NIM/COF, cấu phần lợi nhuận'], ['L', 'Thanh khoản', 'L – LDR, LCR, nguồn thị trường 2'], ['S', 'Thị trường', 'S – kỳ hạn, ngoại tệ, BĐS'], ['vm', 'Vĩ mô', 'CPI, GDP, tỷ giá, lãi suất, tín dụng'], ['all', 'Tất cả', 'Mọi biểu đồ']];
+const DASH_TQ = new Set(['c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'c7', 'c7b', 'c8', 'd1', 'd2', 'd4', 'd11', 'd12', 'd13', 'd14']); // tổng quan: biểu đồ đầu của mỗi mục CAMELS, hạng, phân bố và vài biểu đồ vĩ mô
+function dashGrpOf(id) { const g = []; if (id[0] === 'd') g.push('vm'); const c = { c1: 'C', c2: 'A', c3: 'M', c4: 'E', c5: 'L', c6: 'S' }[id.slice(0, 2)]; if (c) g.push(c); if (id === 'd12') g.push('L'); if (DASH_TQ.has(id)) g.push('tq'); return g; }
+function dashCharts(d) { return dashGrp === 'all' ? d.charts : d.charts.filter(c => dashGrpOf(c.id).includes(dashGrp)); }
 function bandFrom(rows, k) { // dải [thấp nhất, cao nhất] giữa các ngân hàng cho từng hàng dữ liệu; hàng của ngân hàng tra sang lịch sử hệ thống cùng tháng (và tuần); trả về null nếu không hàng nào có
   const key = r => `${r.m}-${r.w || 0}`; const idx = {}; for (const r of (W.hist || [])) if (r.rng) idx[key(r)] = r.rng; for (const r of (W.wk || [])) if (r.rng) idx[key(r)] = r.rng;
   const lo = [], hi = []; let any = false; for (const r of rows) { const g = r.rng || idx[key(r)]; const v = g && g[k]; lo.push(v ? v[0] : null); hi.push(v ? v[1] : null); if (v) any = true; }
@@ -3175,7 +3179,7 @@ function dashSeries(B) {
   return { m0, h, ts: rowTimes(h), charts: [
     { id: 'd1', title: 'Tăng trưởng, lạm phát, thất nghiệp (%)', series: [{ name: 'GDP', color: '--s3', data: h.map(x => x.gdp) }, { name: 'CPI', color: '--s1', data: h.map(x => x.cpi) }, { name: 'Thất nghiệp', color: '--s2', data: h.map(x => x.u ?? 0) }], lines: [W.macro.gStar ?? MAC.gStar], note: `nét đứt: tăng trưởng tiềm năng nội sinh ${pp(W.macro.gStar ?? MAC.gStar, 1)}` },
     { id: 'd10', title: 'Lãi suất thực & quy tắc Taylor (%)', series: [{ name: 'Tái cấp vốn', color: '--s1', data: h.map(x => x.refi) }, { name: 'Taylor gợi ý', color: '--s2', data: h.map(x => x.taylor ?? 0) }, { name: 'Lãi suất thực', color: '--s3', data: h.map(x => x.real ?? 0) }], zero: false },
-    { id: 'd11', title: 'Khoảng cách sản lượng (điểm %)', series: [{ name: 'Gap', color: '--s6', data: h.map(x => x.gap ?? 0) }], lines: [0], zero: false },
+    { id: 'd5', title: 'Khoảng cách sản lượng (điểm %)', series: [{ name: 'Gap', color: '--s6', data: h.map(x => x.gap ?? 0) }], lines: [0], zero: false },
     { id: 'd2', title: 'Tỷ giá USD/VND', series: [{ name: 'USD/VND', color: '--s2', data: h.map(x => x.usd ?? 0) }], zero: false },
     { id: 'd8', title: 'Dự trữ ngoại hối (tỷ USD)', series: [{ name: 'Dự trữ', color: '--s1', data: h.map(x => x.reserves) }], lines: [60], note: 'ngưỡng ~3 tháng nhập khẩu' },
     { id: 'd3', title: 'Lãi suất hệ thống (%)', series: [{ name: 'Huy động hệ thống', color: '--s3', data: h.map(x => x.depSys ?? 0), band: bandFrom(h, 'dep') }, { name: 'Cho vay hệ thống', color: '--s2', data: h.map(x => x.lendSys ?? 0), band: bandFrom(h, 'lend') }, { name: 'Chi phí vốn', color: '--s1', data: h.map(x => x.cof ?? 0) }, { name: 'Liên NH O/N', color: '--s4', data: h.map(x => x.ibON) }, { name: 'Tái cấp vốn', color: '--s6', data: h.map(x => x.refi) }] },
@@ -3211,30 +3215,35 @@ function dashPane(B) {
 const DARKC = { '--s1': '#79c0ff', '--s2': '#ff7b72', '--s3': '#7ee787', '--s4': '#e3b341', '--s5': '#f778ba', '--s6': '#d2a8ff' };
 const dc = k => DARKC[k] || cssVar(k);
 const Stage = { hover: null, panels: [] };
-function renderDashCtl() { const el = $('#dashCtl'); if (!el) return; el.innerHTML = [12, 36, 300].map(r => `<button class="${dashRange === r ? 'on' : ''}" data-range="${r}">${r === 300 ? 'Từ 2022' : r + ' tháng'}</button>`).join(''); el.querySelectorAll('button').forEach(b => b.onclick = () => { dashRange = +b.dataset.range; renderDashCtl(); drawCharts(W.mode === 'bank' ? W.player : W.banks[selectedBank]); }); }
+function renderDashCtl() { const el = $('#dashCtl'); if (!el) return;
+  el.innerHTML = DASH_GRPS.map(([k, t, tip]) => `<button class="grp ${dashGrp === k ? 'on' : ''}" data-grp="${k}" title="${tip}">${t}</button>`).join('') + `<span class="sp"></span>` + [12, 36, 300].map(r => `<button class="${dashRange === r ? 'on' : ''}" data-range="${r}" title="${r === 300 ? 'Toàn bộ lịch sử từ 2022' : r + ' tháng gần nhất'}">${r === 300 ? 'Từ 2022' : r + 'T'}</button>`).join('');
+  const redraw = () => { renderDashCtl(); drawCharts(W.mode === 'bank' ? W.player : W.banks[selectedBank]); };
+  el.querySelectorAll('[data-range]').forEach(b => b.onclick = () => { dashRange = +b.dataset.range; redraw(); });
+  el.querySelectorAll('[data-grp]').forEach(b => b.onclick = () => { dashGrp = b.dataset.grp; Stage.hover = null; redraw(); }); }
 function rowTimes(rows) { return rows.map(x => x.w ? x.m - 1 + x.w / 4 : x.m); } // thời điểm của mỗi dòng: dòng tháng = cuối tháng, dòng tuần = m − 1 + tuần/4
 function nearestRow(ts, t) { let bi = -1, bd = 0.13; ts.forEach((v, i) => { const d = Math.abs(v - t); if (d < bd) { bd = d; bi = i; } }); return bi; }
 function drawDash(B) { // dashboard vẽ trên canvas của sân khấu, cùng màn hình với cảnh pixel
-  const cv = $('#dashcv'); if (!cv) return; const d = dashSeries(B); if (!d.h.length) return;
+  const cv = $('#dashcv'); if (!cv) return; const d = dashSeries(B); if (!d.h.length) return; const charts = dashCharts(d);
+  const ctl = $('#dashCtl'); if (ctl && !ctl.children.length) renderDashCtl();
   const dpr = window.devicePixelRatio || 1; const Wd = cv.clientWidth || 800;
-  if (Wd < 640) { const cols0 = 2, rows0 = Math.ceil(d.charts.length / cols0); cv.parentElement.style.height = (24 + rows0 * 126 + 6) + 'px'; } else cv.parentElement.style.height = ''; // màn hẹp: mỗi ô cao 120px, sân khấu dài ra và cuộn trang
+  if (Wd < 640) { const cols0 = 2, rows0 = Math.ceil(charts.length / cols0); cv.parentElement.style.height = (Math.max(24, (ctl ? ctl.offsetHeight : 0) + 8) + rows0 * 126 + 6) + 'px'; } else cv.parentElement.style.height = ''; // màn hẹp: mỗi ô cao 120px, sân khấu dài ra và cuộn trang
   const Ht = cv.clientHeight || 500;
   if (cv.width !== Math.round(Wd * dpr) || cv.height !== Math.round(Ht * dpr)) { cv.width = Math.round(Wd * dpr); cv.height = Math.round(Ht * dpr); }
   const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, Wd, Ht);
   const grad = g.createLinearGradient(0, 0, 0, Ht); grad.addColorStop(0, '#0b1020'); grad.addColorStop(1, '#101a33'); g.fillStyle = grad; g.fillRect(0, 0, Wd, Ht); // bầu trời đêm nối xuống cảnh pixel
-  g.fillStyle = '#8b949e'; g.font = '11px ' + cssVar('--mono'); g.textAlign = 'left'; g.fillText('BẢNG ĐIỀU KHIỂN · ' + (W.mode === 'bank' ? B.name : 'HỆ THỐNG & VĨ MÔ') + ' · ' + W.dateStr(), 10, 16);
-  const charts = d.charts; const n = charts.length; const cols = Wd >= 980 ? 4 : Wd >= 640 ? 3 : 2; const rows = Math.ceil(n / cols);
-  const top = 24, gap = 6, padX = 6; const cw = (Wd - padX * 2 - gap * (cols - 1)) / cols, ch = (Ht - top - 6 - gap * (rows - 1)) / rows;
+  const n = charts.length; const cols = Math.min(n <= 4 ? 2 : 9, Wd >= 980 ? 4 : Wd >= 640 ? 3 : 2); const rows = Math.ceil(n / cols); // nhóm ≤ 4 biểu đồ: 2 cột cho ô rộng
+  const top = Math.max(24, (ctl ? ctl.offsetHeight : 0) + 8), gap = 6, padX = 6; const cw = (Wd - padX * 2 - gap * (cols - 1)) / cols, ch = Math.min(320, (Ht - top - 6 - gap * (rows - 1)) / rows); // ô cao tối đa 320px: nhóm ít biểu đồ không bị kéo dài
   Stage.panels = [];
   charts.forEach((c, k) => { const x = padX + (k % cols) * (cw + gap), y = top + Math.floor(k / cols) * (ch + gap);
     g.fillStyle = 'rgba(13,17,23,.82)'; g.strokeStyle = '#30363d'; g.lineWidth = 1; g.fillRect(x, y, cw, ch); g.strokeRect(x + 0.5, y + 0.5, cw - 1, ch - 1);
     g.fillStyle = '#c9d1d9'; g.font = '600 10.5px ' + cssVar('--mono'); g.textAlign = 'left'; let title = c.title.toUpperCase(); while (g.measureText(title).width > cw - 12 && title.length > 4) title = title.slice(0, -2) + '…'; g.fillText(title, x + 6, y + 13);
-    const legendH = 12; const rect = { x: x + 4, y: y + 17, w: cw - 8, h: ch - 17 - legendH - 4 };
+    g.font = '9.5px ' + cssVar('--mono'); const legW = c.series.map(sr => g.measureText(sr.name || '').width + 14); let lgLines = 1, lxx = 0; for (const w of legW) { if (lxx + w > cw - 10 && lxx > 0) { lgLines++; lxx = 0; } lxx += w; } lgLines = Math.min(2, lgLines); // chú thích tối đa 2 dòng
+    const legendH = 12 * lgLines; const rect = { x: x + 4, y: y + 17, w: cw - 8, h: ch - 17 - legendH - 4 };
     const hover = Stage.hover && Stage.hover.k === k ? Stage.hover.i : null;
     const m0c = c.m0 ?? d.m0; const ts = c.ts || (c.m0 != null ? d.tsw : d.ts) || d.ts; const marks = {}; for (const a of (W.actions || [])) if (a.who !== 'NHNN' || W.mode === 'sbv') { const i = nearestRow(ts, a.w ? a.m - 1 + a.w / 4 : a.m); if (i >= 0) marks[i] = (marks[i] || 0) + 1; }
     plotSeries(g, rect, c.series, { m0: m0c, ts, lines: c.lines, zero: c.zero, stack: c.stack, hover, marks });
-    let lx = x + 6; g.font = '9.5px ' + cssVar('--mono'); g.textAlign = 'left'; const ly = y + ch - 5;
-    c.series.forEach(sr => { const t = sr.name || ''; const w = g.measureText(t).width + 14; if (lx + w > x + cw - 4) return; g.fillStyle = dc(sr.color); g.fillRect(lx, ly - 7, 7, 7); g.fillStyle = '#8b949e'; g.fillText(t, lx + 10, ly); lx += w; });
+    let lx = x + 6; g.font = '9.5px ' + cssVar('--mono'); g.textAlign = 'left'; let ly = y + ch - 5 - 12 * (lgLines - 1); let line = 1;
+    c.series.forEach((sr, si) => { const t = sr.name || ''; const w = legW[si]; if (lx + w > x + cw - 4) { if (line >= lgLines) return; line++; lx = x + 6; ly += 12; } g.fillStyle = dc(sr.color); g.fillRect(lx, ly - 7, 7, 7); g.fillStyle = '#8b949e'; g.fillText(t, lx + 10, ly); lx += w; });
     const noteB = [c.note, c.series.some(sr => sr.band) ? 'dải mờ: thấp–cao nhất các NH' : ''].filter(Boolean).join(' · '); if (noteB && lx + g.measureText(noteB).width < x + cw - 4) { g.fillStyle = '#6e7681'; g.fillText(noteB, lx + 4, ly); }
     Stage.panels.push({ k, x, y, w: cw, h: ch, rect, ts, n: Math.max(...c.series.map(sr => sr.data.length)) }); });
   if (!cv._bound) { cv._bound = true;
