@@ -285,7 +285,7 @@ Khối tài khóa chạy mỗi tháng (tham số xấp xỉ 2025, tỷ VND/năm:
 
 ## CAMELS: xếp hạng ngân hàng và hệ thống
 
-Tab **CAMELS** (cả hai chế độ), ô KPI "CAMELS" ở tổng quan ngân hàng, dòng [close] mỗi tháng (`CAMELS 2 Khá (C3 A2 M1 E2 L3 S2)`), lịch sử ngân hàng (`camels`, `camelsComp`) và lịch sử hệ thống (`camels.rating`, `dist`). Hạng 1 mạnh → 5 nguy hiểm, ngưỡng trong `CAMELS_T`, dùng chung cho ngân hàng (`Bank.camels`) và hệ thống (`World.camelsSys`, chỉ số gộp theo tài sản, kèm phân bố hạng của các ngân hàng).
+CAMELS là **bộ biểu đồ của bảng điều khiển** (thay cho các biểu đồ chỉ số cũ, cả hai chế độ): C vốn (CAR, cấp 1/RWA), A tài sản (nợ xấu gộp, nhóm 2, bao phủ), M quản trị (CIR, vi phạm đang treo), E sinh lời (ROA, NIM, ROE), L thanh khoản (LDR, LCR, DTTK, OMO/tiền gửi), S thị trường (vốn NH→TDH, NOP/vốn, BĐS/dư nợ), tổng hợp (hạng và điểm, kèm hạng hệ thống) và ở chế độ Thống đốc thêm phân bố hạng của các ngân hàng; mỗi biểu đồ ghi hạng hiện tại ở chú thích và có dải mờ thấp nhất–cao nhất giữa các ngân hàng. Ba biểu đồ vĩ mô (CPI/GDP/tín dụng, tỷ giá, lãi suất hệ thống) giữ nguyên ở chế độ ngân hàng; chế độ Thống đốc giữ các biểu đồ vĩ mô, thay nợ xấu, an toàn vốn, dư nợ bằng bộ CAMELS hệ thống. Ngoài ra: ô KPI "CAMELS" ở tổng quan ngân hàng, dòng [close] mỗi tháng (`CAMELS 2 Khá (C3 A2 M1 E2 L3 S2)`), lịch sử ngân hàng (`camels`, `camelsComp`) và lịch sử hệ thống (`camels.rating`, `dist`). Hạng 1 mạnh → 5 nguy hiểm, ngưỡng trong `CAMELS_T`, dùng chung cho ngân hàng (`Bank.camels`) và hệ thống (`World.camelsSys`, chỉ số gộp theo tài sản, kèm phân bố hạng của các ngân hàng).
 
 | Nhóm | Chỉ số gốc | Xếp hạng |
 |---|---|---|
