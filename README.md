@@ -353,6 +353,7 @@ Kiểm tra (`node tools/rolltest.js`, sốc TPDN BĐS tháng 6, thanh tra tháng
 - **Xử lý vi phạm LCR**: HQLA dưới 90% mức cần thiết là dấu hiệu nguy cơ mất khả năng chi trả → giám sát ngay, không chờ 3 tháng.
 - **Tỷ lệ đòn bẩy LEV** = vốn cấp 1 / (tài sản + ~10% cam kết ngoại bảng), chưa có ngưỡng (hiển thị KPI, dòng [close]). **Trần TPCP** 30% tổng nợ phải trả (AI không mua quá). **Giá trị thực vốn điều lệ** dưới 80% → NHNN cảnh báo, dưới 50% → có thể cơ cấu lại. Giới hạn tín dụng cho TPDN/cổ phiếu 5% vốn điều lệ, mở rộng giới hạn cấp tín dụng sang ngoại bảng, IRB gắn LCR/NSFR 100%, thanh khoản trong ngày, kiểm tra sức chịu đựng: chưa mô hình.
 - KPI thêm "LDR (trần)", "NSFR", "Đòn bẩy LEV"; biểu đồ L2 thêm NSFR; lịch sử `nsfr`, `lev`, `tt50`, `ldrCap` (ngân hàng), `nsfrSys`, `tt50Share` (hệ thống).
+- `node tools/tt50sim.js` (SEED, YEARS): hai ván cùng seed, sự kiện ngẫu nhiên tắt, một ván có TT50 và một ván giữ TT22/TT26 mãi; in bảng cân đối hệ thống theo kỳ (dư nợ, tiền gửi, TPCP, GTCG, LNH, OMO, LDR thô và quy định, SFL, LCR, NSFR, LEV, lãi suất, NIM, nợ xấu, CAR, số ngân hàng theo TT50).
 
 Kiểm tra (`node tools/realtest.js`): ván bắt đầu T12/2025; CPI và GDP mô phỏng lệch số thật ≤ 0,6 điểm; TCV 4,5 suốt 10 tháng; 0 sự kiện ngẫu nhiên trong giai đoạn thật và khi công tắc tắt; T12/2026 TT50 có hiệu lực nhưng chuẩn hệ thống vẫn 85/30/0, T10/2028 mọi ngân hàng sang 95/KBNN 20%/bỏ SFL; sổ tiền cơ sở lệch 0.
 
