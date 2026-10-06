@@ -356,6 +356,29 @@ Cơ chế ngầm, không hiện lên NPL: khoản vay BĐS (và một phần CAP
 
 Kiểm tra (`node tools/rolltest.js`, sốc TPDN BĐS tháng 6, thanh tra tháng 20, ép BĐS đóng băng tháng 30–42): đảo hệ thống lên ~1,7% dư nợ sau sốc; tháng 18 NPL báo cáo 2,4 vs bản chất 3,9; ngân hàng đảo 2,5–4% có lãi nhập gốc 1.400–2.000 tỷ/12 tháng; thanh tra phân loại lại ở 4–5 ngân hàng; khi đóng băng phần đảo bung dần thành nhóm 3; đồng nhất thức và sổ tiền cơ sở lệch 0 (lãi nhập gốc được tách khỏi lãi thu bằng tiền ở bước bù trừ).
 
+## Lãi cao tự phá cầu vay: doanh nghiệp dừng vay, vỡ nợ, ngân hàng phải bóp NIM
+
+Trước bản này lãi vay cao chỉ làm cầu giảm tuyến tính (sàn 0,7) và không có gì buộc ngân hàng nhường biên: lãi cứ cao, NIM cứ dày. Thực tế đến một lúc ngân hàng phải bóp NIM vì chính lãi cao phá cầu vay, doanh nghiệp dừng vay rồi phá sản. Cơ chế (tham số trong `MAC`: `painGap`, `painK`, `painFloor`, `painPd`, `painWave`, `nimCutK`, `nimCutMax`):
+
+| Bước | Luật |
+|---|---|
+| Ngưỡng "đau" | lãi vay mới bình quân tháng trước − kỳ vọng lạm phát > `lendStar` 4 + `painGap` 2 = 6% thực (2023 H1: lãi vay 10–11, kỳ vọng ~4 → tín dụng đến T6 chỉ +3%; 2012: lãi 15, kỳ vọng 9). Mức vượt = `pain`, số tháng liên tiếp = `painM` |
+| Cầu gãy phi tuyến | hệ số cầu (ngắn, dài, tổng) × max(0,45; 1 − 0,15 × pain): doanh nghiệp dừng vay, chỉ còn vốn lưu động bắt buộc |
+| Vỡ nợ | xác suất chuyển nhóm × (1 + 0,1 × pain × 1,3 cho corp/BĐS, 0,8 cho ngành khác + 0,15 × min(2; painM/6)); nợ cần chú ý thành nhóm 3 nhanh hơn (1 + 0,3 × min(2; painM/6)) |
+| Bóp biên hệ thống | `nimCut` tăng 0,06/tháng (0,09 khi pain > 1) khi đang đau hoặc room ế (cầu < 0,7 và tín dụng < nửa room), trừ thẳng vào mặt bằng cho vay (tối đa 1,2 điểm); cầu hồi thì lấy lại 0,08/tháng. Đáy: lãi vay ngắn hạn ≥ chi phí vốn + 1,0, TDH ≥ lãi ≥12T + 1,0 (ngoài sàn 5,5/6,0) |
+| Bóp biên từng ngân hàng | ngân hàng AI có dư nợ YTD < nửa kế hoạch trong lúc đau hạ thêm lãi niêm yết 0,1/tháng (tối đa 0,6) để giữ khách |
+| Thông báo | khi đau 2 tháng liền: "Lãi vay mới thực X vượt ngưỡng 6: doanh nghiệp dừng vay, cầu ×…, chuyển nhóm nợ tăng; các ngân hàng bắt đầu bóp biên" |
+
+Hai lỗi cũ lộ ra khi kiểm tra và đã sửa cùng lúc:
+- **Hệ số cầu tín dụng tổng** so lãi vay danh nghĩa với mốc thực nên kẹt ở sàn 0,5 cả ván (bảng Ràng buộc vĩ mô luôn hiện ×0,50). Nay so lãi thực với mốc thực như hai hệ số ngắn/dài.
+- **CASA không bao giờ chuyển sang kỳ hạn**: tiền gửi sinh ra từ cho vay rơi vào CASA và nằm đó, nên CASA lên 50–61% và chi phí vốn chỉ 4,2% dù lãi kỳ hạn 9–10%. Nay mỗi tháng đóng 20% khoảng cách tới tỷ trọng CASA mục tiêu = CASA gốc × (1 + 0,1 × số hóa) − 0,025 × (lãi 6–12T − 5) (2022: lãi 12T lên 9–10 → CASA hệ thống ~22 → ~18%; 2024 hồi). Chi phí vốn giờ theo lãi kỳ hạn thật (TCV 9 → cof 5,9 thay vì 4,2).
+
+Cũng sửa trong bản này: sự kiện ngẫu nhiên "NHNN tăng lãi 1 điểm" không còn chồng lên quy tắc khi GDP âm hoặc TCV ≥ 9 (từng kéo TCV lên 15 giữa suy thoái); tiền tái cấp vốn đặc biệt tối đa +1 điểm CPI; NHNN không hạ lãi trong 12 tháng sau khi tăng vì đô la hóa hoặc khi dự trữ hụt > 5 tỷ trong 12 tháng; tăng 1,0 (thay 0,5) khi VND đã vượt biên độ hoặc dự trữ < 55 tỷ.
+
+Biểu đồ mới trong tab Vĩ mô: "Lãi cao phá cầu vay" (lãi vay mới thực, ngưỡng 6, cầu tín dụng ×10, biên nhường).
+
+**Kiểm tra** (`node tools/nimtest.js`, cặp ván cùng seed, không giai đoạn thật, Thống đốc giữ TCV 9 từ tháng 31 đến 54 khi CPI đã về 3): lãi vay thực vượt 6 trong 40 tháng (đối chứng 0); cầu thấp nhất ×0,39 (đối chứng ×0,50); tín dụng tháng 54 −3,7 so +4,4; nợ xấu đỉnh 8,3 so 5,6; biên hệ thống nhường 1,2; biên lãi vay − chi phí vốn 4,75 → 3,65 trong khi TCV vẫn 9; NIM hệ thống 4,8 → 1,3; ngân hàng ế room tự hạ 0,6; sổ tiền cơ sở 0. Đạt 9/9. Harness khác: fxtest 8/8, realtest 10/10, rolltest 9/9, rstest 9/10, ledger 0. Macrotest: seed 1 và 3 đạt mốc M2/GDP tăng cả ván (1,25 → 1,57 và 1,51), tín dụng bình quân 9–10%/năm; seed 2 vẫn rơi vào vòng xoáy (3 ngân hàng rời hệ thống ngay năm 1 vì nợ cơ cấu + đảo nợ, rồi TCV lên 13 trong 2033–2036, tín dụng âm) — lỗi hệ thống LOLR năm 1 đã biết, chưa xử lý; kịch bản giữ TCV 2,5 suốt ván nay cho CPI lên 9,7 (đô la hóa → mất giá → truyền dẫn), đúng cơ chế mới nhưng làm mốc M2/GDP của kịch bản đó trượt.
+
 ## Giai đoạn thật 12/2025–9/2026, Thông tư 50/2026 và công tắc sự kiện ngẫu nhiên
 
 **Ván bắt đầu T12/2025**: lịch sử thật kéo dài đến 11/2025 (CPI 10–11/2025: 3,25 và 3,58; GDP quý IV/2025 8,46; Fed hạ về 4,0 rồi 3,75; tín dụng ~20% yoy). Từ tháng 1 của ván đến tháng gần nhất có số liệu (bảng `REAL`, hiện 12/2025–9/2026) game chạy **theo thực tế thay vì ngẫu nhiên**:
